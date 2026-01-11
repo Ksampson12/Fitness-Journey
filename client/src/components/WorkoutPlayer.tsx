@@ -160,12 +160,14 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                   )}
                 </Button>
                 
-                <Button 
-                  className="flex-1 h-14 text-lg font-display font-bold uppercase tracking-widest rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]" 
-                  onClick={handleNext}
-                >
-                  {stepIndex === steps.length - 1 ? "Finish" : "Next Exercise"}
-                </Button>
+                <motion.div className="flex-1" whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    className="w-full h-14 text-lg font-display font-bold uppercase tracking-widest rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]" 
+                    onClick={handleNext}
+                  >
+                    {stepIndex === steps.length - 1 ? "Finish" : "Next Exercise"}
+                  </Button>
+                </motion.div>
               </div>
             </div>
           </>
