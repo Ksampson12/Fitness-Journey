@@ -1,0 +1,460 @@
+SDD / Blueprint (Firebase) — Gamified Fitness Journey Mobile App
+1) Goal
+
+Create a Duolingo-style fitness mobile app where:
+
+Users follow a Journey Map (nodes/tasks)
+
+Completing nodes triggers animations, rewards, unlocks
+
+Users have an avatar that evolves (cosmetics + stages)
+
+OpenAI generates workouts/plans like a personal trainer
+
+App is fast, smooth, low cost, and scalable
+
+2) Non-negotiable cost rules (MUST IMPLEMENT)
+✅ Do this (keeps Firebase cheap + fast)
+
+Store one “user summary” document containing:
+
+current node
+
+xp, coins, streak
+
+last active
+
+unlocked node ids (or zone progress)
+
+Load the full map (static) once and cache it on device
+
+Only fetch node details when needed
+
+Generate workouts once, store them, and re-open from DB (no re-generation)
+
+❌ Avoid this (this is how bills explode)
+
+Real-time listeners on lots of docs
+
+Map screen subscribing to hundreds of node docs individually
+
+This difference is literally: “cheap forever” vs “why is my bill exploding?”
+
+Biggest cost driver won’t be the database
+
+It will be OpenAI usage, so:
+
+Cache AI outputs (don’t regenerate)
+
+Rate limit per user per day
+
+Provide “quick workout templates” fallback when AI isn’t necessary
+
+3) Tech stack (Firebase architecture)
+Mobile
+
+React Native + Expo (mobile-first)
+
+Local caching: AsyncStorage (or MMKV) for map + last-known user summary
+
+Animations: Reanimated + Lottie (reward pop, streak animations)
+
+Firebase backend
+
+Firebase Auth (email, Google/Apple later)
+
+Firestore (progress, workouts, avatar, plan storage)
+
+Cloud Functions OR Cloud Run
+
+Authoritative progression logic
+
+AI orchestration (OpenAI calls)
+
+Rate limiting & abuse protection
+
+FCM (Push Notifications) for streak reminders + unlocks
+
+Firebase Analytics (optional but recommended)
+
+Key rule: OpenAI key never goes in the app — only in server environment variables.
+
+4) Firestore data model (optimized for low reads)
+4.1 Static map (global, cache-once)
+
+/maps/v1
+
+metadata: version, updatedAt
+
+/maps/v1/zones/{zoneId}
+
+name, orderIndex, theme
+
+/maps/v1/nodes/{nodeId}
+
+zoneId
+
+nodeType: "workout" | "recovery" | "boss" | "checkpoint"
+
+difficulty: 1–10
+
+prerequisites: string[] (nodeIds)
+
+rewardKey: string
+
+aiProfile: { styleTags[], focus, constraints… }
+
+orderIndex / pathPosition (for rendering)
+
+✅ Client behavior:
+
+On first run (or when version changes): download all nodes once and cache locally.
+
+After that: map screen reads from local cache only.
+
+4.2 User state (ONE summary doc to avoid many reads)
+
+/users/{uid} ← the critical “user summary doc”
+
+profile:
+
+fitnessLevel, goals, equipment, constraints
+
+economy:
+
+xp, coins
+
+journey:
+
+currentNodeId
+
+unlockedNodeIds: string[] (or zoneProgress object)
+
+completedNodeIds: string[] (optional; or store a compact representation)
+
+streak:
+
+streakCount
+
+lastActiveDate (ISO string, date-only recommended)
+
+flags:
+
+mapVersionSeen
+
+aiDailyCount
+
+aiDailyResetDate
+
+✅ The map screen should only need this one doc + local cached map.
+
+4.3 Avatar state (separate doc, fetched only when opening avatar screens)
+
+/users/{uid}/avatar/state
+
+archetype (minimal/fantasy/cyber/etc)
+
+evolutionStage (int)
+
+equippedItems: string[]
+
+unlockedItems: string[]
+
+✅ Only read this when the user goes to Avatar/Locker, not constantly.
+
+4.4 Workouts (store once, reopen many times)
+
+/users/{uid}/workouts/{workoutId}
+
+nodeId (nullable for quick workouts)
+
+source: "ai" | "template" | "plan"
+
+workoutJson (strict schema)
+
+createdAt
+
+completedAt (nullable)
+
+completionMetrics (json)
+
+✅ Rule: If a workout already exists for (uid + nodeId) and not expired, reuse it.
+
+4.5 Plans (optional MVP, but supported)
+
+/users/{uid}/plans/{planId}
+
+planJson (weeks/sessions)
+
+createdAt
+
+active (bool)
+
+4.6 Event log (optional, helps analytics/debugging)
+
+/users/{uid}/events/{eventId}
+
+type: node_started, node_completed, streak, reward
+
+payload
+
+createdAt
+
+✅ Don’t overuse this early; it’s optional.
+
+5) Backend design: Cloud Functions / Cloud Run (authoritative logic)
+
+You’ll implement a small set of endpoints.
+
+Must-have callable endpoints
+
+startNode(uid, nodeId)
+
+completeNode(uid, nodeId, workoutId, completionMetrics)
+
+generatePlan(uid, planPrefs) (optional for MVP, but recommended)
+
+Optional endpoints
+
+quickWorkout(uid, minutes, focus)
+
+getDailyStatus(uid) (streak reminder logic)
+
+6) Progression engine logic (server-side only)
+6.1 startNode(uid, nodeId)
+
+Purpose: Validate access + deliver a workout (cached or generated).
+
+Steps:
+
+Load /users/{uid} (user summary doc)
+
+Check nodeId is in unlockedNodeIds and not already completed
+
+Check if workout already exists for this node:
+
+Query /users/{uid}/workouts where nodeId == nodeId AND completedAt is null (or recent)
+
+If found: return it
+
+If not found:
+
+Decide whether AI is allowed today (rate limit)
+
+Generate workout via OpenAI OR use template fallback
+
+Store workout doc
+
+Return {workoutId, workoutJson}
+
+Cost controls
+
+Only one user doc read + one workout query
+
+AI called only if needed + allowed
+
+6.2 completeNode(uid, nodeId, workoutId, completionMetrics)
+
+Purpose: Mark completion, apply rewards, unlock next nodes, update streak/avatar.
+
+Steps:
+
+Load /users/{uid} (summary doc)
+
+Validate workoutId belongs to user + matches nodeId
+
+Write completion:
+
+update workout: completedAt + completionMetrics
+
+Update user summary doc atomically:
+
+add nodeId to completed list (or progress bitset)
+
+increment xp/coins
+
+set lastActiveDate
+
+update streakCount (positive only)
+
+unlock next nodes: based on prerequisites satisfied
+
+Update avatar state if reward triggers unlock/evolution stage
+
+Return updated summary fields (xp, coins, streak, unlocked nodes delta, avatar unlocks)
+
+Cost controls
+
+One summary doc read + small number of writes
+
+No map node reads needed (client has cached map); server can read prerequisites from static map if needed, but ideally server also caches it (or stores prerequisite data in code or memory)
+
+7) AI Orchestrator (OpenAI) — safe + cheap + consistent
+Critical requirements
+
+AI outputs MUST be strict JSON (schema-based)
+
+Cache every generated workout; don’t regenerate for the same node unless you intentionally rotate it
+
+Two generators
+
+Workout Generator
+Input: user profile + node type + difficulty + time + equipment + recent history
+Output: WorkoutJson
+
+Plan Generator
+Input: goals + schedule + equipment + constraints
+Output: PlanJson (weeks, sessions), and workouts generated lazily per session
+
+OpenAI cost controls (MANDATORY)
+
+Caching: if workout for node exists → reuse
+
+Rate limit: e.g. max AI generations per user per day = 3
+
+Fallback templates: if AI limit reached or OpenAI fails, return a prebuilt workout template
+
+8) Mobile app (Expo) — screens + read strategy
+8.1 Screens
+
+Onboarding (profile + avatar archetype)
+
+Journey Map (home)
+
+Workout Player
+
+Avatar / Locker
+
+Progress (stats, streak, badges)
+
+8.2 Data loading strategy (this is the cost saver)
+App launch:
+
+Read /users/{uid} once (user summary)
+
+If local cached map version != server map version:
+
+Download /maps/v1/nodes and /maps/v1/zones once
+
+Cache locally
+
+Render Journey Map using:
+
+cached map
+
+user summary doc
+
+Map screen:
+
+NO real-time listener on all nodes
+
+Ideally: one-time fetch of user summary, then periodic refresh on app open / after completion
+
+Use optimistic UI after completion, then confirm with server response
+
+Workout start:
+
+Call startNode(nodeId) → get workout JSON
+
+Store workout locally for session continuity
+
+Completion:
+
+Call completeNode(...)
+
+Update local cached user summary immediately from response
+
+9) Push notifications (FCM)
+MVP notifications:
+
+Streak reminder: if lastActiveDate != today by X time
+
+Unlock celebration: “New zone unlocked!”
+
+Trigger logic:
+
+Scheduled Cloud Function daily checks OR client scheduled reminders (later)
+
+Keep it simple early (one daily reminder max)
+
+10) Replit/Windsurf build spec (copy/paste)
+
+Build a React Native (Expo) mobile app with Firebase backend. Implement:
+
+Firebase
+
+Firebase Auth (email/password)
+
+Firestore collections:
+
+/maps/v1/zones, /maps/v1/nodes (static)
+
+/users/{uid} (ONE user summary doc — MUST include currentNodeId, xp, coins, streak, lastActiveDate, unlockedNodeIds)
+
+/users/{uid}/avatar/state
+
+/users/{uid}/workouts/{workoutId}
+
+/users/{uid}/plans/{planId} (optional)
+
+Cloud Functions / Cloud Run endpoints
+
+startNode(nodeId):
+
+validate node unlocked using user summary
+
+reuse existing workout if present
+
+otherwise generate workout via OpenAI (server-side) using strict JSON schema
+
+store workout and return it
+
+completeNode(nodeId, workoutId, completionMetrics):
+
+mark workout completed
+
+update user summary doc (xp, coins, streak, lastActiveDate)
+
+unlock next nodes (based on prerequisites)
+
+update avatar unlocks/evolution
+
+return updated summary + unlock changes
+
+Add OpenAI usage controls:
+
+caching (no regeneration if stored)
+
+per-user daily rate limits
+
+quick workout template fallback
+
+Mobile UI
+
+Screens: Onboarding, Journey Map, Workout Player, Avatar/Locker, Progress
+
+Cost-saving rules:
+
+Cache map locally and do not subscribe to hundreds of node docs
+
+Map screen reads only cached map + one user summary doc
+
+Fetch node details only on demand
+
+Avoid many realtime listeners
+
+11) MVP acceptance checklist
+
+✅ User logs in
+
+✅ User completes onboarding
+
+✅ Map loads fast (from cache) + shows locked/unlocked/completed nodes
+
+✅ Tapping node starts workout (cached or generated)
+
+✅ Completing workout applies rewards + unlocks new nodes + shows animation
+
+✅ OpenAI calls are rate-limited + cached
+
+✅ Firestore reads stay minimal (no map read storms)
