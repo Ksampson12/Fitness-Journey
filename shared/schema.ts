@@ -34,6 +34,11 @@ export const userProfiles = pgTable("user_profiles", {
   equipment: text("equipment").array().default([]), // dumbbell, mat, etc
   goals: text("goals").array().default([]), // strength, cardio, flexibility
   
+  // Physical Stats
+  age: integer("age"),
+  height: integer("height"), // in cm
+  weight: integer("weight"), // in kg
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

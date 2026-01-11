@@ -82,6 +82,21 @@ export async function registerRoutes(
     }
   });
 
+  app.patch(api.user.updateProfile.path, requireAuth, async (req: any, res) => {
+    try {
+      const input = api.user.updateProfile.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      
+      const profile = await storage.updateUserProfile(userId, input);
+      res.json(profile);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
   // === Map Routes ===
   app.get(api.map.get.path, async (req, res) => {
     const nodes = await storage.getMapNodes();

@@ -41,6 +41,25 @@ export const api = {
         goals: z.array(z.string()),
         equipment: z.array(z.string()),
         avatarArchetype: z.string(),
+        age: z.coerce.number().optional(),
+        height: z.coerce.number().optional(),
+        weight: z.coerce.number().optional(),
+      }),
+      responses: {
+        200: z.any(), // Returns updated UserProfile
+      },
+    },
+    updateProfile: {
+      method: 'PATCH' as const,
+      path: '/api/user/profile',
+      input: z.object({
+        fitnessLevel: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+        goals: z.array(z.string()).optional(),
+        equipment: z.array(z.string()).optional(),
+        avatarArchetype: z.string().optional(),
+        age: z.coerce.number().optional(),
+        height: z.coerce.number().optional(),
+        weight: z.coerce.number().optional(),
       }),
       responses: {
         200: z.any(), // Returns updated UserProfile

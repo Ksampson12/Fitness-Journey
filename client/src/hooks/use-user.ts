@@ -42,3 +42,26 @@ export function useUpdateOnboarding() {
     },
   });
 }
+
+// PATCH /api/user/profile
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: typeof api.user.updateProfile.input._type) => {
+      const validated = api.user.updateProfile.input.parse(data);
+      const res = await fetch(api.user.updateProfile.path, {
+        method: api.user.updateProfile.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validated),
+        credentials: "include",
+      });
+      
+      if (!res.ok) throw new Error("Failed to update profile");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.user.getProfile.path] });
+    },
+  });
+}
