@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, CheckCircle, Timer, Dumbbell, X } from "lucide-react";
+import { Play, CheckCircle, Timer, Dumbbell, X, Check, Sparkles } from "lucide-react";
 import { useCompleteNode } from "@/hooks/use-game";
 
 type WorkoutPlayerProps = {
@@ -18,11 +18,17 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const [totalTimer, setTotalTimer] = useState(0); // Total workout time
   const [exerciseTimer, setExerciseTimer] = useState(0); // Per-exercise countdown/countup
   const [completed, setCompleted] = useState(false);
+  const [completedSets, setCompletedSets] = useState(0); // Sets completed for current exercise
+  const [allSetsComplete, setAllSetsComplete] = useState(false); // Celebration state
   
   const completeMutation = useCompleteNode();
 
   const steps = workout?.exercises || workout?.steps || [];
   const currentStep = steps[stepIndex];
+  
+  // Check if this is a set-based exercise
+  const totalSets = typeof currentStep?.sets === 'number' ? currentStep.sets : 0;
+  const isSetBasedExercise = totalSets > 0;
 
   // Parse duration string to seconds (e.g., "8-10 minutes" -> 480, "30 seconds" -> 30)
   const parseDuration = (duration: string | undefined): number | null => {
@@ -46,14 +52,30 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const exerciseDuration = parseDuration(currentStep?.duration);
   const isTimedExercise = exerciseDuration !== null && exerciseDuration > 0;
 
-  // Reset exercise timer when moving to a new step
+  // Reset exercise timer and sets when moving to a new step
   useEffect(() => {
     if (isTimedExercise) {
       setExerciseTimer(exerciseDuration);
     } else {
       setExerciseTimer(0);
     }
+    // Reset set tracking for new exercise
+    setCompletedSets(0);
+    setAllSetsComplete(false);
   }, [stepIndex, isTimedExercise, exerciseDuration]);
+
+  // Handle completing a set
+  const handleCompleteSet = () => {
+    if (completedSets < totalSets) {
+      const newCompleted = completedSets + 1;
+      setCompletedSets(newCompleted);
+      
+      // Check if all sets are now complete
+      if (newCompleted === totalSets) {
+        setAllSetsComplete(true);
+      }
+    }
+  };
 
   // Main timer logic
   useEffect(() => {
@@ -173,30 +195,114 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                       ? 'bg-red-500/20 border-red-500/30' 
                       : isTimedExercise && exerciseTimer === 0 
                         ? 'bg-green-500/20 border-green-500/30'
-                        : 'bg-card/30 border-white/5'
+                        : allSetsComplete
+                          ? 'bg-green-500/20 border-green-500/30'
+                          : 'bg-card/30 border-white/5'
                   }`}>
                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
                      
+                     {/* Celebration animation when all sets complete */}
+                     <AnimatePresence>
+                       {allSetsComplete && (
+                         <motion.div
+                           initial={{ opacity: 0, scale: 0 }}
+                           animate={{ opacity: 1, scale: 1 }}
+                           exit={{ opacity: 0 }}
+                           className="absolute inset-0 flex items-center justify-center z-20"
+                         >
+                           <motion.div
+                             animate={{ rotate: 360 }}
+                             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                             className="absolute"
+                           >
+                             <Sparkles className="w-32 h-32 text-yellow-400/30" />
+                           </motion.div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                     
                      {isTimedExercise ? (
-                       <Timer className={`w-16 h-16 mb-4 ${exerciseTimer <= 10 && exerciseTimer > 0 ? 'text-red-400 animate-pulse' : exerciseTimer === 0 ? 'text-green-400' : 'text-muted-foreground/20'}`} />
+                       <>
+                         <Timer className={`w-16 h-16 mb-4 ${exerciseTimer <= 10 && exerciseTimer > 0 ? 'text-red-400 animate-pulse' : exerciseTimer === 0 ? 'text-green-400' : 'text-muted-foreground/20'}`} />
+                         <span className={`text-6xl font-mono font-bold tabular-nums z-10 tracking-wider transition-colors ${
+                           exerciseTimer <= 10 && exerciseTimer > 0 
+                             ? 'text-red-400' 
+                             : exerciseTimer === 0 
+                               ? 'text-green-400'
+                               : 'text-white'
+                         }`}>
+                           {formatTime(exerciseTimer)}
+                         </span>
+                         <span className="text-xs text-muted-foreground mt-2 uppercase tracking-wider">
+                           {exerciseTimer === 0 ? 'Complete!' : 'Countdown'}
+                         </span>
+                       </>
+                     ) : isSetBasedExercise ? (
+                       <>
+                         {/* Set tracker circles */}
+                         <div className="flex gap-3 mb-6 z-10">
+                           {Array.from({ length: totalSets }).map((_, i) => (
+                             <motion.button
+                               key={i}
+                               onClick={i === completedSets ? handleCompleteSet : undefined}
+                               disabled={i !== completedSets}
+                               className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${
+                                 i < completedSets 
+                                   ? 'bg-primary border-primary text-primary-foreground' 
+                                   : i === completedSets 
+                                     ? 'border-primary bg-primary/20 cursor-pointer hover:bg-primary/30' 
+                                     : 'border-white/20 bg-white/5'
+                               }`}
+                               whileTap={i === completedSets ? { scale: 0.9 } : {}}
+                               initial={false}
+                               animate={i < completedSets ? { scale: [1, 1.2, 1] } : {}}
+                               transition={{ duration: 0.3 }}
+                               data-testid={`set-button-${i}`}
+                             >
+                               {i < completedSets ? (
+                                 <Check className="w-6 h-6" />
+                               ) : (
+                                 <span className="text-sm font-bold">{i + 1}</span>
+                               )}
+                             </motion.button>
+                           ))}
+                         </div>
+                         
+                         {/* Set progress text */}
+                         <div className="text-center z-10">
+                           {allSetsComplete ? (
+                             <motion.div
+                               initial={{ scale: 0 }}
+                               animate={{ scale: 1 }}
+                               className="text-green-400"
+                             >
+                               <CheckCircle className="w-12 h-12 mx-auto mb-2" />
+                               <span className="text-xl font-bold uppercase">All Sets Done!</span>
+                             </motion.div>
+                           ) : (
+                             <>
+                               <span className="text-4xl font-mono font-bold text-white">
+                                 {completedSets} / {totalSets}
+                               </span>
+                               <p className="text-xs text-muted-foreground mt-1 uppercase">
+                                 Tap to complete set {completedSets + 1}
+                               </p>
+                             </>
+                           )}
+                         </div>
+                         
+                         {/* Timer still running in background */}
+                         <span className="text-xs text-muted-foreground mt-4 font-mono z-10">
+                           {formatTime(exerciseTimer)}
+                         </span>
+                       </>
                      ) : (
-                       <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
-                     )}
-                     
-                     <span className={`text-6xl font-mono font-bold tabular-nums z-10 tracking-wider transition-colors ${
-                       isTimedExercise && exerciseTimer <= 10 && exerciseTimer > 0 
-                         ? 'text-red-400' 
-                         : isTimedExercise && exerciseTimer === 0 
-                           ? 'text-green-400'
-                           : 'text-white'
-                     }`}>
-                       {formatTime(exerciseTimer)}
-                     </span>
-                     
-                     {isTimedExercise && (
-                       <span className="text-xs text-muted-foreground mt-2 uppercase tracking-wider">
-                         {exerciseTimer === 0 ? 'Complete!' : 'Countdown'}
-                       </span>
+                       <>
+                         <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
+                         <span className="text-6xl font-mono font-bold text-white tabular-nums z-10 tracking-wider">
+                           {formatTime(exerciseTimer)}
+                         </span>
+                       </>
                      )}
                   </div>
 
@@ -204,9 +310,15 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                     <h3 className="text-2xl font-display font-bold text-primary uppercase tracking-wider">{currentStep?.name || "Exercise Name"}</h3>
                     <p className="text-muted-foreground text-sm font-medium">{currentStep?.notes || currentStep?.description || "Description of the movement"}</p>
                     
-                    <div className="inline-flex items-center justify-center bg-blue-500/20 px-6 py-2 rounded-full border border-blue-500/30 mt-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                    <div className="inline-flex items-center justify-center gap-2 bg-blue-500/20 px-6 py-2 rounded-full border border-blue-500/30 mt-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
                       <span className="text-sm font-bold text-blue-400 uppercase tracking-wide">
-                        {currentStep?.reps ? `${currentStep.reps} Reps` : currentStep?.duration ? currentStep.duration : "12 Reps"}
+                        {isSetBasedExercise && currentStep?.reps 
+                          ? `${currentStep.sets} Sets x ${currentStep.reps}` 
+                          : currentStep?.reps 
+                            ? `${currentStep.reps} Reps` 
+                            : currentStep?.duration 
+                              ? currentStep.duration 
+                              : "Complete exercise"}
                       </span>
                     </div>
                   </div>
