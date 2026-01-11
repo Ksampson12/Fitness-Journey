@@ -14,8 +14,9 @@ type WorkoutPlayerProps = {
 
 export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPlayerProps) {
   const [stepIndex, setStepIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [timer, setTimer] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true); // Auto-start timer
+  const [totalTimer, setTotalTimer] = useState(0); // Total workout time
+  const [exerciseTimer, setExerciseTimer] = useState(0); // Per-exercise countdown/countup
   const [completed, setCompleted] = useState(false);
   
   const completeMutation = useCompleteNode();
@@ -23,13 +24,55 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const steps = workout?.exercises || workout?.steps || [];
   const currentStep = steps[stepIndex];
 
+  // Parse duration string to seconds (e.g., "8-10 minutes" -> 480, "30 seconds" -> 30)
+  const parseDuration = (duration: string | undefined): number | null => {
+    if (!duration) return null;
+    const lower = duration.toLowerCase();
+    
+    // Match patterns like "8-10 minutes", "30 seconds", "2 minutes", "20-30 seconds"
+    const minuteMatch = lower.match(/(\d+)(?:–|-)?(\d+)?\s*min/);
+    const secondMatch = lower.match(/(\d+)(?:–|-)?(\d+)?\s*sec/);
+    
+    if (minuteMatch) {
+      // Use the first number (minimum) for countdown
+      return parseInt(minuteMatch[1]) * 60;
+    }
+    if (secondMatch) {
+      return parseInt(secondMatch[1]);
+    }
+    return null;
+  };
+
+  const exerciseDuration = parseDuration(currentStep?.duration);
+  const isTimedExercise = exerciseDuration !== null && exerciseDuration > 0;
+
+  // Reset exercise timer when moving to a new step
+  useEffect(() => {
+    if (isTimedExercise) {
+      setExerciseTimer(exerciseDuration);
+    } else {
+      setExerciseTimer(0);
+    }
+  }, [stepIndex, isTimedExercise, exerciseDuration]);
+
+  // Main timer logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying) {
-      interval = setInterval(() => setTimer((t) => t + 1), 1000);
+      interval = setInterval(() => {
+        setTotalTimer((t) => t + 1);
+        
+        if (isTimedExercise) {
+          // Countdown for timed exercises
+          setExerciseTimer((t) => Math.max(0, t - 1));
+        } else {
+          // Count up for rep-based exercises
+          setExerciseTimer((t) => t + 1);
+        }
+      }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, isTimedExercise]);
 
   const handleNext = () => {
     if (stepIndex < steps.length - 1) {
@@ -46,8 +89,8 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
       await completeMutation.mutateAsync({
         workoutId,
         metrics: {
-          durationSeconds: timer,
-          calories: Math.floor(timer * 0.15), // Mock calculation
+          durationSeconds: totalTimer,
+          calories: Math.floor(totalTimer * 0.15), // Mock calculation
           difficultyRating: 3,
         }
       });
@@ -83,7 +126,7 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
              <div className="grid grid-cols-2 gap-4 w-full">
                <div className="bg-card p-4 rounded-xl border border-white/5">
                  <div className="text-xs text-muted-foreground uppercase">Duration</div>
-                 <div className="text-xl font-mono font-bold">{formatTime(timer)}</div>
+                 <div className="text-xl font-mono font-bold">{formatTime(totalTimer)}</div>
                </div>
                <div className="bg-card p-4 rounded-xl border border-white/5">
                  <div className="text-xs text-muted-foreground uppercase">XP Earned</div>
@@ -101,11 +144,17 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                    <Dumbbell className="w-4 h-4 text-primary" />
                 </div>
-                <span className="font-display font-bold tracking-wide text-white">{workout?.title || "Workout"}</span>
+                <div className="flex flex-col">
+                  <span className="font-display font-bold tracking-wide text-white text-sm">{workout?.title || "Workout"}</span>
+                  <span className="text-xs text-muted-foreground font-mono">Total: {formatTime(totalTimer)}</span>
+                </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white">
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{stepIndex + 1}/{steps.length}</span>
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Main Content */}
@@ -119,15 +168,36 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                   transition={{ duration: 0.3 }}
                   className="w-full flex flex-col items-center"
                 >
-                  <div className="w-full max-w-xs aspect-square bg-card/30 rounded-3xl border border-white/5 mb-8 flex flex-col items-center justify-center relative overflow-hidden group">
-                     {/* Placeholder for exercise animation/image */}
+                  <div className={`w-full max-w-xs aspect-square rounded-3xl border mb-8 flex flex-col items-center justify-center relative overflow-hidden group transition-colors duration-300 ${
+                    isTimedExercise && exerciseTimer <= 10 && exerciseTimer > 0 
+                      ? 'bg-red-500/20 border-red-500/30' 
+                      : isTimedExercise && exerciseTimer === 0 
+                        ? 'bg-green-500/20 border-green-500/30'
+                        : 'bg-card/30 border-white/5'
+                  }`}>
                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
                      
-                     <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
+                     {isTimedExercise ? (
+                       <Timer className={`w-16 h-16 mb-4 ${exerciseTimer <= 10 && exerciseTimer > 0 ? 'text-red-400 animate-pulse' : exerciseTimer === 0 ? 'text-green-400' : 'text-muted-foreground/20'}`} />
+                     ) : (
+                       <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
+                     )}
                      
-                     <span className="text-6xl font-mono font-bold text-white tabular-nums z-10 tracking-wider">
-                       {formatTime(timer)}
+                     <span className={`text-6xl font-mono font-bold tabular-nums z-10 tracking-wider transition-colors ${
+                       isTimedExercise && exerciseTimer <= 10 && exerciseTimer > 0 
+                         ? 'text-red-400' 
+                         : isTimedExercise && exerciseTimer === 0 
+                           ? 'text-green-400'
+                           : 'text-white'
+                     }`}>
+                       {formatTime(exerciseTimer)}
                      </span>
+                     
+                     {isTimedExercise && (
+                       <span className="text-xs text-muted-foreground mt-2 uppercase tracking-wider">
+                         {exerciseTimer === 0 ? 'Complete!' : 'Countdown'}
+                       </span>
+                     )}
                   </div>
 
                   <div className="w-full space-y-2 text-center">
