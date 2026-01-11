@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Map, Dumbbell, User } from "lucide-react";
+import { Map, Dumbbell, User, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Navigation() {
@@ -8,6 +8,7 @@ export function Navigation() {
   const links = [
     { href: "/", icon: Map, label: "Journey" },
     { href: "/quickfit", icon: Dumbbell, label: "QuickFit" },
+    { href: "/goals", icon: Trophy, label: "Goals" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
 

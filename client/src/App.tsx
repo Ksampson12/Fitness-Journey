@@ -9,6 +9,7 @@ import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Onboarding from "@/pages/Onboarding";
 import QuickFit from "@/pages/QuickFit";
+import Goals from "@/pages/Goals";
 import Profile from "@/pages/Profile";
 import PlanReveal from "@/pages/PlanReveal";
 import NotFound from "@/pages/not-found";
@@ -61,6 +62,9 @@ function Router() {
       </Route>
       <Route path="/quickfit">
         <ProtectedRoute component={QuickFit} />
+      </Route>
+      <Route path="/goals">
+        <ProtectedRoute component={Goals} />
       </Route>
       <Route path="/profile">
         <ProtectedRoute component={Profile} />
