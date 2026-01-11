@@ -33,6 +33,7 @@ export const userProfiles = pgTable("user_profiles", {
   fitnessLevel: text("fitness_level").default("beginner"), // beginner, intermediate, advanced
   equipment: text("equipment").array().default([]), // dumbbell, mat, etc
   goals: text("goals").array().default([]), // strength, cardio, flexibility
+  activities: text("activities").array().default([]), // running, swimming, weightlifting, etc
   
   // Physical Stats
   age: integer("age"),

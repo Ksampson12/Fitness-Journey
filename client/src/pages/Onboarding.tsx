@@ -2,13 +2,15 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useUpdateOnboarding } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Heart, Zap, User } from "lucide-react";
+import { Dumbbell, Heart, Zap, User, Bike, Waves, Mountain, CircleDashed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const steps = [
   { id: "level", title: "Fitness Level", description: "Where are you starting from?" },
   { id: "goals", title: "Primary Goal", description: "What drives you?" },
-  { id: "avatar", title: "Choose Archetype", description: "Select your digital form" },
+  { id: "equipment", title: "Equipment", description: "What do you have access to?" },
+  { id: "activities", title: "Activities", description: "What do you enjoy?" },
+  { id: "avatar", title: "Choose Avatar", description: "Select your digital form" },
 ];
 
 export default function Onboarding() {
@@ -17,7 +19,8 @@ export default function Onboarding() {
     fitnessLevel: "beginner",
     goals: [] as string[],
     equipment: [] as string[],
-    avatarArchetype: "rookie",
+    activities: [] as string[],
+    avatarArchetype: "shark-male",
   });
 
   const updateOnboarding = useUpdateOnboarding();
@@ -36,7 +39,8 @@ export default function Onboarding() {
       await updateOnboarding.mutateAsync({
         fitnessLevel: formData.fitnessLevel as any,
         goals: formData.goals,
-        equipment: ["bodyweight"], // default for now
+        equipment: formData.equipment,
+        activities: formData.activities,
         avatarArchetype: formData.avatarArchetype,
       });
       toast({ title: "Welcome, initiate.", description: "Your journey begins now." });
@@ -95,20 +99,80 @@ export default function Onboarding() {
     </div>
   );
 
+  const renderEquipmentSelect = () => (
+    <div className="grid grid-cols-2 gap-3">
+      {[
+        "Dumbbells", "Barbell", "Bench", "Kettlebell", 
+        "Pull-up Bar", "Resistance Bands", "Medicine Ball", "Treadmill", "None (Bodyweight)"
+      ].map((item) => (
+        <button
+          key={item}
+          onClick={() => {
+            const equipment = formData.equipment.includes(item)
+              ? formData.equipment.filter((e) => e !== item)
+              : [...formData.equipment, item];
+            setFormData({ ...formData, equipment });
+          }}
+          className={`p-4 rounded-xl border text-sm font-bold transition-all ${
+            formData.equipment.includes(item)
+              ? "border-green-400 bg-green-400/10 text-green-400"
+              : "border-white/10 bg-card hover:border-white/20 text-muted-foreground"
+          }`}
+        >
+          {item}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderActivitiesSelect = () => (
+    <div className="grid grid-cols-2 gap-3">
+      {[
+        { id: "running", label: "Running", icon: Bike }, // reusing Bike icon for generic cardio
+        { id: "cycling", label: "Cycling", icon: Bike },
+        { id: "swimming", label: "Swimming", icon: Waves },
+        { id: "hiking", label: "Hiking", icon: Mountain },
+        { id: "yoga", label: "Yoga", icon: CircleDashed },
+        { id: "weightlifting", label: "Weightlifting", icon: Dumbbell },
+      ].map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          onClick={() => {
+            const activities = formData.activities.includes(id)
+              ? formData.activities.filter((a) => a !== id)
+              : [...formData.activities, id];
+            setFormData({ ...formData, activities });
+          }}
+          className={`p-4 rounded-xl border flex items-center gap-3 transition-all ${
+            formData.activities.includes(id)
+              ? "border-purple-400 bg-purple-400/10 text-purple-400"
+              : "border-white/10 bg-card hover:border-white/20 text-muted-foreground"
+          }`}
+        >
+          <Icon className="w-5 h-5" />
+          <span className="font-bold text-sm">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   const renderAvatarSelect = () => (
     <div className="grid grid-cols-2 gap-4">
-      {["rookie", "runner", "lifter", "yogi"].map((type) => (
+      {[
+        { id: "shark-male", label: "Shark (Male)", color: "text-blue-400", border: "border-blue-400", bg: "bg-blue-400/10" },
+        { id: "dolphin-female", label: "Dolphin (Female)", color: "text-pink-400", border: "border-pink-400", bg: "bg-pink-400/10" }
+      ].map((type) => (
         <button
-          key={type}
-          onClick={() => setFormData({ ...formData, avatarArchetype: type })}
+          key={type.id}
+          onClick={() => setFormData({ ...formData, avatarArchetype: type.id })}
           className={`aspect-square rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all ${
-            formData.avatarArchetype === type
-              ? "border-accent bg-accent/10 shadow-[0_0_15px_rgba(168,85,247,0.2)] text-accent"
+            formData.avatarArchetype === type.id
+              ? `${type.border} ${type.bg} ${type.color} shadow-[0_0_15px_rgba(0,0,0,0.2)]`
               : "border-white/10 bg-card hover:border-white/20 text-muted-foreground"
           }`}
         >
           <User className="w-12 h-12 opacity-80" />
-          <span className="font-display font-bold uppercase text-xs">{type}</span>
+          <span className="font-display font-bold uppercase text-xs">{type.label}</span>
         </button>
       ))}
     </div>
@@ -116,18 +180,18 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background p-6 flex flex-col justify-center max-w-lg mx-auto">
-      <div className="mb-12">
-        <h1 className="text-4xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
+      <div className="mb-8 mt-8">
+        <h1 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
           Initialize
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground">
           Configure your fitness profile to begin the simulation.
         </p>
       </div>
 
       <div className="flex-1">
-        <div className="mb-8">
-          <h2 className="text-2xl font-display text-white mb-2">{steps[currentStep].title}</h2>
+        <div className="mb-6">
+          <h2 className="text-xl font-display text-white mb-2">{steps[currentStep].title}</h2>
           <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
         </div>
 
@@ -140,11 +204,13 @@ export default function Onboarding() {
         >
           {currentStep === 0 && renderLevelSelect()}
           {currentStep === 1 && renderGoalsSelect()}
-          {currentStep === 2 && renderAvatarSelect()}
+          {currentStep === 2 && renderEquipmentSelect()}
+          {currentStep === 3 && renderActivitiesSelect()}
+          {currentStep === 4 && renderAvatarSelect()}
         </motion.div>
       </div>
 
-      <div className="mt-8 flex justify-between items-center">
+      <div className="mt-8 flex justify-between items-center pb-8">
         <div className="flex gap-2">
           {steps.map((_, idx) => (
             <div
@@ -158,7 +224,11 @@ export default function Onboarding() {
         <Button 
           onClick={handleNext}
           className="px-8"
-          disabled={currentStep === 1 && formData.goals.length === 0}
+          disabled={
+            (currentStep === 1 && formData.goals.length === 0) ||
+            (currentStep === 2 && formData.equipment.length === 0) ||
+            (currentStep === 3 && formData.activities.length === 0)
+          }
         >
           {currentStep === steps.length - 1 ? "Start Journey" : "Next"}
         </Button>

@@ -35,16 +35,20 @@ export default function Profile() {
     age: "",
     height: "",
     weight: "",
+    equipment: [] as string[],
+    activities: [] as string[]
   });
 
   if (!profile) return null;
 
   const handleEditOpen = () => {
     setFormData({
-      avatarArchetype: profile.avatarArchetype || "rookie",
+      avatarArchetype: profile.avatarArchetype || "shark-male",
       age: profile.age?.toString() || "",
       height: profile.height?.toString() || "",
       weight: profile.weight?.toString() || "",
+      equipment: profile.equipment || [],
+      activities: profile.activities || []
     });
     setIsOpen(true);
   };
@@ -56,12 +60,28 @@ export default function Profile() {
         age: formData.age ? parseInt(formData.age) : undefined,
         height: formData.height ? parseInt(formData.height) : undefined,
         weight: formData.weight ? parseInt(formData.weight) : undefined,
+        equipment: formData.equipment,
+        activities: formData.activities
       });
       setIsOpen(false);
       toast({ title: "Profile updated", description: "Your stats have been saved." });
     } catch (error) {
       toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
     }
+  };
+
+  const toggleEquipment = (item: string) => {
+    const newEquipment = formData.equipment.includes(item)
+      ? formData.equipment.filter(i => i !== item)
+      : [...formData.equipment, item];
+    setFormData({ ...formData, equipment: newEquipment });
+  };
+
+  const toggleActivity = (item: string) => {
+    const newActivities = formData.activities.includes(item)
+      ? formData.activities.filter(i => i !== item)
+      : [...formData.activities, item];
+    setFormData({ ...formData, activities: newActivities });
   };
 
   return (
@@ -86,65 +106,90 @@ export default function Profile() {
                 <Edit className="w-5 h-5" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-card border-white/10">
+            <DialogContent className="sm:max-w-[425px] bg-card border-white/10 max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Profile</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="archetype" className="text-right">
-                    Avatar
-                  </Label>
+              <div className="grid gap-6 py-4">
+                <div className="space-y-2">
+                  <Label>Avatar</Label>
                   <Select 
                     value={formData.avatarArchetype} 
                     onValueChange={(val) => setFormData({...formData, avatarArchetype: val})}
                   >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select class" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select avatar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="rookie">Rookie</SelectItem>
-                      <SelectItem value="runner">Runner</SelectItem>
-                      <SelectItem value="lifter">Lifter</SelectItem>
-                      <SelectItem value="yogi">Yogi</SelectItem>
+                      <SelectItem value="shark-male">Shark (Male)</SelectItem>
+                      <SelectItem value="dolphin-female">Dolphin (Female)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="age" className="text-right">
-                    Age
-                  </Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => setFormData({...formData, age: e.target.value})}
-                    className="col-span-3"
-                  />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Age</Label>
+                    <Input
+                      type="number"
+                      value={formData.age}
+                      onChange={(e) => setFormData({...formData, age: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Height (cm)</Label>
+                    <Input
+                      type="number"
+                      value={formData.height}
+                      onChange={(e) => setFormData({...formData, height: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      value={formData.weight}
+                      onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="height" className="text-right">
-                    Height (cm)
-                  </Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    value={formData.height}
-                    onChange={(e) => setFormData({...formData, height: e.target.value})}
-                    className="col-span-3"
-                  />
+
+                <div className="space-y-2">
+                  <Label>Equipment</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Dumbbells", "Barbell", "Bench", "Kettlebell", "Pull-up Bar", "Resistance Bands", "Medicine Ball", "Treadmill", "None (Bodyweight)"].map(item => (
+                      <button
+                        key={item}
+                        onClick={() => toggleEquipment(item)}
+                        className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                          formData.equipment.includes(item)
+                            ? "bg-green-500/20 border-green-500 text-green-500"
+                            : "bg-white/5 border-white/10 text-muted-foreground"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="weight" className="text-right">
-                    Weight (kg)
-                  </Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({...formData, weight: e.target.value})}
-                    className="col-span-3"
-                  />
+
+                <div className="space-y-2">
+                  <Label>Activities</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["running", "cycling", "swimming", "hiking", "yoga", "weightlifting"].map(item => (
+                      <button
+                        key={item}
+                        onClick={() => toggleActivity(item)}
+                        className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                          formData.activities.includes(item)
+                            ? "bg-purple-500/20 border-purple-500 text-purple-500"
+                            : "bg-white/5 border-white/10 text-muted-foreground"
+                        }`}
+                      >
+                        {item.charAt(0).toUpperCase() + item.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <Button onClick={handleSave} disabled={updateProfile.isPending}>
@@ -155,7 +200,9 @@ export default function Profile() {
         </div>
 
         <h1 className="text-3xl font-display font-bold uppercase mb-1">User-{profile.userId.slice(0, 4)}</h1>
-        <p className="text-primary font-mono text-sm uppercase tracking-wider mb-8">{profile.avatarArchetype} Class</p>
+        <p className="text-primary font-mono text-sm uppercase tracking-wider mb-8">
+          {profile.avatarArchetype === "shark-male" ? "Shark" : profile.avatarArchetype === "dolphin-female" ? "Dolphin" : profile.avatarArchetype} Class
+        </p>
 
         <div className="space-y-6">
           <section>
@@ -197,6 +244,32 @@ export default function Profile() {
                 </div>
              </div>
           </section>
+
+          {(profile.equipment?.length > 0) && (
+            <section>
+              <h2 className="text-sm font-bold uppercase text-muted-foreground mb-4 tracking-wider">Equipment</h2>
+              <div className="flex flex-wrap gap-2">
+                {profile.equipment.map((item: string) => (
+                  <span key={item} className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-xs border border-green-500/20">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(profile.activities?.length > 0) && (
+            <section>
+              <h2 className="text-sm font-bold uppercase text-muted-foreground mb-4 tracking-wider">Activities</h2>
+              <div className="flex flex-wrap gap-2">
+                {profile.activities.map((item: string) => (
+                  <span key={item} className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs border border-purple-500/20">
+                    {item.charAt(0).toUpperCase() + item.slice(1)}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
 
           <Button 
             variant="destructive" 
