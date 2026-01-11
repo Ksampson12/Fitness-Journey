@@ -110,27 +110,38 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
 
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
-              <div className="w-full max-w-xs aspect-square bg-card/30 rounded-3xl border border-white/5 mb-8 flex flex-col items-center justify-center relative overflow-hidden group">
-                 {/* Placeholder for exercise animation/image */}
-                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
-                 
-                 <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
-                 
-                 <span className="text-6xl font-mono font-bold text-white tabular-nums z-10 tracking-wider">
-                   {formatTime(timer)}
-                 </span>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={stepIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full flex flex-col items-center"
+                >
+                  <div className="w-full max-w-xs aspect-square bg-card/30 rounded-3xl border border-white/5 mb-8 flex flex-col items-center justify-center relative overflow-hidden group">
+                     {/* Placeholder for exercise animation/image */}
+                     <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
+                     
+                     <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
+                     
+                     <span className="text-6xl font-mono font-bold text-white tabular-nums z-10 tracking-wider">
+                       {formatTime(timer)}
+                     </span>
+                  </div>
 
-              <div className="w-full space-y-2 text-center">
-                <h3 className="text-2xl font-display font-bold text-primary uppercase tracking-wider">{currentStep?.name || "Exercise Name"}</h3>
-                <p className="text-muted-foreground text-sm font-medium">{currentStep?.notes || currentStep?.description || "Description of the movement"}</p>
-                
-                <div className="inline-flex items-center justify-center bg-blue-500/20 px-6 py-2 rounded-full border border-blue-500/30 mt-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
-                  <span className="text-sm font-bold text-blue-400 uppercase tracking-wide">
-                    {currentStep?.reps ? `${currentStep.reps} Reps` : currentStep?.duration ? currentStep.duration : "12 Reps"}
-                  </span>
-                </div>
-              </div>
+                  <div className="w-full space-y-2 text-center">
+                    <h3 className="text-2xl font-display font-bold text-primary uppercase tracking-wider">{currentStep?.name || "Exercise Name"}</h3>
+                    <p className="text-muted-foreground text-sm font-medium">{currentStep?.notes || currentStep?.description || "Description of the movement"}</p>
+                    
+                    <div className="inline-flex items-center justify-center bg-blue-500/20 px-6 py-2 rounded-full border border-blue-500/30 mt-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                      <span className="text-sm font-bold text-blue-400 uppercase tracking-wide">
+                        {currentStep?.reps ? `${currentStep.reps} Reps` : currentStep?.duration ? currentStep.duration : "12 Reps"}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Controls */}
