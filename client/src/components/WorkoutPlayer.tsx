@@ -20,7 +20,7 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   
   const completeMutation = useCompleteNode();
 
-  const steps = workout?.steps || [];
+  const steps = workout?.exercises || workout?.steps || [];
   const currentStep = steps[stepIndex];
 
   useEffect(() => {
@@ -101,49 +101,56 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                    <Dumbbell className="w-4 h-4 text-primary" />
                 </div>
-                <span className="font-display font-bold tracking-wide">{workout?.name || "Workout"}</span>
+                <span className="font-display font-bold tracking-wide text-white">{workout?.title || "Workout"}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white">
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
-              <div className="w-full max-w-xs aspect-square bg-card rounded-2xl border border-white/5 mb-8 flex items-center justify-center relative overflow-hidden group">
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
+              <div className="w-full max-w-xs aspect-square bg-card/30 rounded-3xl border border-white/5 mb-8 flex flex-col items-center justify-center relative overflow-hidden group">
                  {/* Placeholder for exercise animation/image */}
-                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                 <Dumbbell className="w-24 h-24 text-muted-foreground/20" />
+                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
                  
-                 <div className="absolute bottom-4 left-0 right-0 text-center">
-                   <span className="text-6xl font-mono font-bold text-foreground tabular-nums">
-                     {formatTime(timer)}
-                   </span>
-                 </div>
+                 <Dumbbell className="w-16 h-16 text-muted-foreground/20 mb-4" />
+                 
+                 <span className="text-6xl font-mono font-bold text-white tabular-nums z-10 tracking-wider">
+                   {formatTime(timer)}
+                 </span>
               </div>
 
               <div className="w-full space-y-2 text-center">
-                <h3 className="text-2xl font-display text-primary">{currentStep?.name || "Exercise Name"}</h3>
-                <p className="text-muted-foreground">{currentStep?.description || "Description of the movement"}</p>
-                <div className="inline-flex items-center gap-2 bg-secondary/10 px-4 py-1 rounded-full border border-secondary/20 mt-2">
-                  <span className="text-sm font-bold text-secondary uppercase">{currentStep?.reps || "12"} Reps</span>
+                <h3 className="text-2xl font-display font-bold text-primary uppercase tracking-wider">{currentStep?.name || "Exercise Name"}</h3>
+                <p className="text-muted-foreground text-sm font-medium">{currentStep?.notes || currentStep?.description || "Description of the movement"}</p>
+                
+                <div className="inline-flex items-center justify-center bg-blue-500/20 px-6 py-2 rounded-full border border-blue-500/30 mt-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                  <span className="text-sm font-bold text-blue-400 uppercase tracking-wide">
+                    {currentStep?.reps ? `${currentStep.reps} Reps` : currentStep?.duration ? currentStep.duration : "12 Reps"}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Controls */}
             <div className="p-6 border-t border-white/5 bg-card/50 backdrop-blur-sm">
-              <div className="flex gap-4">
+              <div className="flex gap-4 items-center">
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  className="shrink-0"
+                  className="h-14 w-14 shrink-0 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 hover:text-primary transition-colors"
                   onClick={() => setIsPlaying(!isPlaying)}
                 >
-                  {isPlaying ? <Timer className="w-5 h-5 animate-pulse text-primary" /> : <Play className="w-5 h-5 ml-1" />}
+                  {isPlaying ? (
+                    <Timer className="w-6 h-6 animate-pulse text-primary" />
+                  ) : (
+                    <Play className="w-6 h-6 ml-1 text-white" />
+                  )}
                 </Button>
+                
                 <Button 
-                  className="flex-1 text-lg font-display tracking-widest" 
+                  className="flex-1 h-14 text-lg font-display font-bold uppercase tracking-widest rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]" 
                   onClick={handleNext}
                 >
                   {stepIndex === steps.length - 1 ? "Finish" : "Next Exercise"}
