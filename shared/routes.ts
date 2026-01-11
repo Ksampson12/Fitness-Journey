@@ -37,6 +37,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/user/onboarding',
       input: z.object({
+        displayName: z.string().min(1),
         fitnessLevel: z.enum(['beginner', 'intermediate', 'advanced']),
         goals: z.array(z.string()),
         equipment: z.array(z.string()),
@@ -54,6 +55,7 @@ export const api = {
       method: 'PATCH' as const,
       path: '/api/user/profile',
       input: z.object({
+        displayName: z.string().optional(),
         fitnessLevel: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
         goals: z.array(z.string()).optional(),
         equipment: z.array(z.string()).optional(),

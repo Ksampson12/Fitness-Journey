@@ -30,10 +30,13 @@ export const userProfiles = pgTable("user_profiles", {
   equippedItems: text("equipped_items").array().default([]),
   
   // Settings / AI Context
+  displayName: text("display_name"), // User's preferred name
   fitnessLevel: text("fitness_level").default("beginner"), // beginner, intermediate, advanced
   equipment: text("equipment").array().default([]), // dumbbell, mat, etc
   goals: text("goals").array().default([]), // strength, cardio, flexibility
   activities: text("activities").array().default([]), // running, swimming, weightlifting, etc
+  
+  weeklyPlan: jsonb("weekly_plan"), // Stores AI generated weekly schedule and motivation
   
   // Physical Stats
   age: integer("age"),

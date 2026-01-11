@@ -2,10 +2,13 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useUpdateOnboarding } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dumbbell, Heart, Zap, User, Bike, Waves, Mountain, CircleDashed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 const steps = [
+  { id: "intro", title: "Welcome", description: "Let's get to know you." },
   { id: "level", title: "Fitness Level", description: "Where are you starting from?" },
   { id: "goals", title: "Primary Goal", description: "What drives you?" },
   { id: "equipment", title: "Equipment", description: "What do you have access to?" },
@@ -16,6 +19,7 @@ const steps = [
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
+    displayName: "",
     fitnessLevel: "beginner",
     goals: [] as string[],
     equipment: [] as string[],
@@ -25,6 +29,7 @@ export default function Onboarding() {
 
   const updateOnboarding = useUpdateOnboarding();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -37,17 +42,37 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     try {
       await updateOnboarding.mutateAsync({
+        displayName: formData.displayName,
         fitnessLevel: formData.fitnessLevel as any,
         goals: formData.goals,
         equipment: formData.equipment,
         activities: formData.activities,
         avatarArchetype: formData.avatarArchetype,
       });
-      toast({ title: "Welcome, initiate.", description: "Your journey begins now." });
+      // Redirect to the plan reveal page instead of home
+      setLocation("/plan-reveal");
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to save profile." });
     }
   };
+
+  const renderIntro = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <User className="w-16 h-16 text-primary mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2">Who is training today?</h3>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Your Name</label>
+        <Input 
+          value={formData.displayName}
+          onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+          placeholder="Enter your name"
+          className="text-lg py-6 bg-white/5 border-white/10"
+        />
+      </div>
+    </div>
+  );
 
   const renderLevelSelect = () => (
     <div className="space-y-4">
@@ -202,11 +227,12 @@ export default function Onboarding() {
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
         >
-          {currentStep === 0 && renderLevelSelect()}
-          {currentStep === 1 && renderGoalsSelect()}
-          {currentStep === 2 && renderEquipmentSelect()}
-          {currentStep === 3 && renderActivitiesSelect()}
-          {currentStep === 4 && renderAvatarSelect()}
+          {currentStep === 0 && renderIntro()}
+          {currentStep === 1 && renderLevelSelect()}
+          {currentStep === 2 && renderGoalsSelect()}
+          {currentStep === 3 && renderEquipmentSelect()}
+          {currentStep === 4 && renderActivitiesSelect()}
+          {currentStep === 5 && renderAvatarSelect()}
         </motion.div>
       </div>
 
@@ -225,12 +251,14 @@ export default function Onboarding() {
           onClick={handleNext}
           className="px-8"
           disabled={
-            (currentStep === 1 && formData.goals.length === 0) ||
-            (currentStep === 2 && formData.equipment.length === 0) ||
-            (currentStep === 3 && formData.activities.length === 0)
+            (currentStep === 0 && formData.displayName.length === 0) ||
+            (currentStep === 2 && formData.goals.length === 0) ||
+            (currentStep === 3 && formData.equipment.length === 0) ||
+            (currentStep === 4 && formData.activities.length === 0) ||
+            (updateOnboarding.isPending) // Disable when submitting
           }
         >
-          {currentStep === steps.length - 1 ? "Start Journey" : "Next"}
+          {updateOnboarding.isPending ? "Generating..." : currentStep === steps.length - 1 ? "Start Journey" : "Next"}
         </Button>
       </div>
     </div>

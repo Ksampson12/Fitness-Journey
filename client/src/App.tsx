@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import Onboarding from "@/pages/Onboarding";
 import QuickFit from "@/pages/QuickFit";
 import Profile from "@/pages/Profile";
+import PlanReveal from "@/pages/PlanReveal";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -28,7 +29,8 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <Redirect to="/onboarding" />;
   }
   
-  // If we have profile and try to access onboarding, go home
+  // If we have profile and try to access onboarding, go home (unless we want to allow re-onboarding manually?)
+  // Actually, we should allow /plan-reveal if profile exists
   if (!profileLoading && profile && window.location.pathname === "/onboarding") {
     return <Redirect to="/" />;
   }
@@ -53,6 +55,9 @@ function Router() {
       </Route>
       <Route path="/onboarding">
         <ProtectedRoute component={Onboarding} />
+      </Route>
+      <Route path="/plan-reveal">
+        <ProtectedRoute component={PlanReveal} />
       </Route>
       <Route path="/quickfit">
         <ProtectedRoute component={QuickFit} />

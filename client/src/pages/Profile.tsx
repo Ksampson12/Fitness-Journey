@@ -36,6 +36,7 @@ export default function Profile() {
 
   // Form state
   const [formData, setFormData] = useState({
+    displayName: "",
     avatarArchetype: "",
     age: "",
     height: "",
@@ -66,6 +67,7 @@ export default function Profile() {
 
   const handleEditOpen = () => {
     setFormData({
+      displayName: profile.displayName || "",
       avatarArchetype: profile.avatarArchetype || "shark-male",
       age: profile.age?.toString() || "",
       height: profile.height?.toString() || "",
@@ -79,6 +81,7 @@ export default function Profile() {
   const handleSave = async () => {
     try {
       await updateProfile.mutateAsync({
+        displayName: formData.displayName,
         avatarArchetype: formData.avatarArchetype,
         age: formData.age ? parseInt(formData.age) : undefined,
         height: formData.height ? parseInt(formData.height) : undefined,
@@ -134,6 +137,14 @@ export default function Profile() {
                 <DialogTitle>Edit Profile</DialogTitle>
               </DialogHeader>
               <div className="grid gap-6 py-4">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input
+                    value={formData.displayName}
+                    onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+                    placeholder="Your Name"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Avatar</Label>
                   <Select 
@@ -222,7 +233,9 @@ export default function Profile() {
           </Dialog>
         </div>
 
-        <h1 className="text-3xl font-display font-bold uppercase mb-1">User-{profile.userId.slice(0, 4)}</h1>
+        <h1 className="text-3xl font-display font-bold uppercase mb-1">
+          {profile.displayName || `User-${profile.userId.slice(0, 4)}`}
+        </h1>
         <p className="text-primary font-mono text-sm uppercase tracking-wider mb-8">
           {profile.avatarArchetype === "shark-male" ? "Shark" : profile.avatarArchetype === "dolphin-female" ? "Dolphin" : profile.avatarArchetype} Class
         </p>

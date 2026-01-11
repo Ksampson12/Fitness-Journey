@@ -52,15 +52,58 @@ export async function registerRoutes(
       
       const initialNodes = ["z1-n1"]; // Unlock first node
       
+      // AI Generation for Weekly Plan
+      let weeklyPlan = null;
+      try {
+        if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+           const systemPrompt = `You are an expert personal trainer. Create a personalized 7-day weekly workout schedule and a motivational message for a new client.
+           Client: ${input.displayName}, Level: ${input.fitnessLevel}, Goal: ${input.goals.join(', ')}.
+           Equipment: ${input.equipment.join(', ')}. Activities: ${input.activities.join(', ')}.
+           The 'motivation' should explain WHY this plan works for them and ask them to trust the process.
+           Response JSON format: { 
+             schedule: { day: string, focus: string, duration: string, notes: string }[], 
+             motivation: string,
+             trainerNote: string
+           }`;
+           
+           const completion = await openai.chat.completions.create({
+             model: "gpt-5.1",
+             messages: [
+               { role: "system", content: systemPrompt },
+               { role: "user", content: "Generate weekly plan." }
+             ],
+             response_format: { type: "json_object" }
+           });
+           const content = completion.choices[0].message.content;
+           if (content) {
+             weeklyPlan = JSON.parse(content);
+           }
+        }
+      } catch (e) {
+        console.error("AI Plan Generation failed", e);
+        // Fallback plan
+        weeklyPlan = {
+          schedule: [
+            { day: "Monday", focus: "Full Body Start", duration: "30m", notes: "Kick off the week strong" },
+            { day: "Wednesday", focus: "Cardio & Core", duration: "30m", notes: "Keep the heart rate up" },
+            { day: "Friday", focus: "Strength & Power", duration: "45m", notes: "Finish strong" }
+          ],
+          motivation: "Consistency is key. Trust the process and you will see results.",
+          trainerNote: "Let's get to work!"
+        };
+      }
+
       if (profile) {
         profile = await storage.updateUserProfile(userId, {
           ...input,
+          weeklyPlan,
           unlockedNodeIds: profile.unlockedNodeIds.length ? profile.unlockedNodeIds : initialNodes
         });
       } else {
         profile = await storage.createUserProfile({
           userId,
           ...input,
+          weeklyPlan,
           currentNodeId: "z1-n1",
           unlockedNodeIds: initialNodes,
           completedNodeIds: [],
