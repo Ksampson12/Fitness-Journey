@@ -174,12 +174,12 @@ export async function registerRoutes(
 
       if (!workout) {
         // Generate new workout via AI or Template
-        // For MVP, we'll try AI generation with a fallback
         const nodes = await storage.getMapNodes();
         const node = nodes.find(n => n.id === nodeId);
         
+        // Default template
         let workoutJson = {
-          title: "Quick Workout",
+          title: node?.name || "Workout",
           exercises: [
             { name: "Jumping Jacks", duration: "60s", reps: null },
             { name: "Pushups", duration: null, reps: "10" }
@@ -189,11 +189,31 @@ export async function registerRoutes(
         try {
           // Attempt AI generation
           if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+             // Check if we have a weekly plan day for this node
+             // We map node.orderIndex (1-based) to the weekly plan schedule index (0-based)
+             const planIndex = (node?.orderIndex || 1) - 1;
+             const planDay = (profile.weeklyPlan as any)?.schedule?.[planIndex];
+             
+             let systemPrompt = "You are a fitness trainer. Generate a JSON workout based on user stats and node type.";
+             let userPrompt = `Node: ${node?.name}, Type: ${node?.type}, Difficulty: ${node?.difficulty}. User Level: ${profile.fitnessLevel}. Equipment: ${profile.equipment?.join(', ') || 'None'}.`;
+             
+             if (planDay) {
+               // If we have a planned day, force the AI to generate THAT workout
+               systemPrompt = `You are an expert personal trainer executing Day ${planIndex + 1} of a personalized weekly plan.
+               The plan for today is: ${planDay.focus}. Notes: ${planDay.notes}. Duration: ${planDay.duration}.
+               Generate the specific exercises, sets, and reps for this session.
+               User Level: ${profile.fitnessLevel}. Equipment: ${profile.equipment?.join(', ') || 'None'}.`;
+               userPrompt = `Generate full workout JSON for: ${planDay.focus}`;
+               
+               // Update title to match plan
+               workoutJson.title = `${planDay.day}: ${planDay.focus}`;
+             }
+
              const completion = await openai.chat.completions.create({
                model: "gpt-5.1",
                messages: [
-                 { role: "system", content: "You are a fitness trainer. Generate a JSON workout based on user stats and node type. Response format: { title: string, exercises: { name: string, duration?: string, reps?: string, sets?: number }[] }" },
-                 { role: "user", content: `Node: ${node?.name}, Type: ${node?.type}, Difficulty: ${node?.difficulty}. User Level: ${profile.fitnessLevel}. Equipment: ${profile.equipment}` }
+                 { role: "system", content: systemPrompt + " Response format: { title: string, exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[] }" },
+                 { role: "user", content: userPrompt }
                ],
                response_format: { type: "json_object" }
              });
