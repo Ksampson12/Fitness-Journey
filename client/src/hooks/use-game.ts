@@ -1,30 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type CompleteNodeRequest, type StartNodeRequest } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
+import { useAuth } from "@/hooks/use-auth";
 
-export function useMapData() {
+// GET /api/map
+export function useGameMap() {
+  const { isAuthenticated } = useAuth();
+
   return useQuery({
     queryKey: [api.map.get.path],
     queryFn: async () => {
       const res = await fetch(api.map.get.path, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch map data");
+      if (!res.ok) throw new Error("Failed to fetch map");
       return api.map.get.responses[200].parse(await res.json());
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: isAuthenticated,
   });
 }
 
+// POST /api/game/start-node
 export function useStartNode() {
   return useMutation({
-    mutationFn: async (data: StartNodeRequest) => {
+    mutationFn: async (data: { nodeId: string }) => {
       const validated = api.game.startNode.input.parse(data);
       const res = await fetch(api.game.startNode.path, {
-        method: "POST",
+        method: api.game.startNode.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
         credentials: "include",
       });
+
       if (!res.ok) {
-        if (res.status === 403) throw new Error("Node is locked!");
+        if (res.status === 403) throw new Error("Level locked or requirement not met");
         throw new Error("Failed to start node");
       }
       return api.game.startNode.responses[200].parse(await res.json());
@@ -32,24 +38,26 @@ export function useStartNode() {
   });
 }
 
+// POST /api/game/complete-node
 export function useCompleteNode() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (data: CompleteNodeRequest) => {
+    mutationFn: async (data: typeof api.game.completeNode.input._type) => {
       const validated = api.game.completeNode.input.parse(data);
       const res = await fetch(api.game.completeNode.path, {
-        method: "POST",
+        method: api.game.completeNode.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
         credentials: "include",
       });
+
       if (!res.ok) throw new Error("Failed to complete node");
       return api.game.completeNode.responses[200].parse(await res.json());
     },
     onSuccess: (data) => {
-      // Update the user profile cache with new rewards/unlocks
-      queryClient.setQueryData([api.user.getProfile.path], data.newProfileState);
-      // Invalidate map data if needed (though map structure is static, unlock status is in profile)
+      queryClient.invalidateQueries({ queryKey: [api.user.getProfile.path] });
+      queryClient.invalidateQueries({ queryKey: [api.map.get.path] });
     },
   });
 }

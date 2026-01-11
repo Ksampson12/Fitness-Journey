@@ -4,7 +4,7 @@ import {
   type UserProfile, type InsertUserProfile, 
   type GameNode, type GameZone, type Workout, type InsertWorkout 
 } from "@shared/schema";
-import { eq, and, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User Profile
@@ -86,51 +86,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedMapData(): Promise<void> {
-    // Upsert Zones to ensure theme is updated
-    await db.insert(zones).values([
-      { id: "zone1", name: "Sun-Kissed Shore", theme: "beach", orderIndex: 1 },
-      { id: "zone2", name: "Coral Reef Depths", theme: "underwater", orderIndex: 2 },
-    ]).onConflictDoUpdate({
-      target: zones.id,
-      set: { name: sql`excluded.name`, theme: sql`excluded.theme` }
-    });
+    const existingZones = await this.getMapZones();
+    if (existingZones.length > 0) return;
 
-    // Upsert Nodes to ensure new names/types are applied
+    // Create Zones
+    await db.insert(zones).values([
+      { id: "zone1", name: "The Awakening Forest", theme: "forest", orderIndex: 1 },
+      { id: "zone2", name: "Iron Canyon", theme: "canyon", orderIndex: 2 },
+    ]);
+
+    // Create Nodes
     await db.insert(nodes).values([
       // Zone 1
       { 
-        id: "z1-n1", zoneId: "zone1", name: "Morning Surf", type: "workout", 
+        id: "z1-n1", zoneId: "zone1", name: "First Steps", type: "workout", 
         difficulty: 1, orderIndex: 1, x: 50, y: 80, 
-        aiTags: ["full-body", "cardio"],
+        aiTags: ["full-body", "beginner"],
         prerequisites: []
       },
       { 
-        id: "z1-n2", zoneId: "zone1", name: "Sandy Sprint", type: "workout", 
+        id: "z1-n2", zoneId: "zone1", name: "River Run", type: "workout", 
         difficulty: 2, orderIndex: 2, x: 150, y: 120, 
-        aiTags: ["legs", "cardio"],
+        aiTags: ["cardio"],
         prerequisites: ["z1-n1"]
       },
       { 
-        id: "z1-n3", zoneId: "zone1", name: "Shark Encounter", type: "boss", 
+        id: "z1-n3", zoneId: "zone1", name: "Bear Cave", type: "boss", 
         difficulty: 3, orderIndex: 3, x: 250, y: 100, 
-        aiTags: ["strength", "core"],
+        aiTags: ["strength", "upper-body"],
         prerequisites: ["z1-n2"]
       },
       // Zone 2
       { 
-        id: "z2-n1", zoneId: "zone2", name: "Deep Dive", type: "workout", 
+        id: "z2-n1", zoneId: "zone2", name: "Rocky Ascent", type: "workout", 
         difficulty: 4, orderIndex: 4, x: 350, y: 150, 
-        aiTags: ["breath-work", "endurance"],
+        aiTags: ["legs", "endurance"],
         prerequisites: ["z1-n3"]
       }
-    ]).onConflictDoUpdate({
-      target: nodes.id,
-      set: { 
-        name: sql`excluded.name`, 
-        type: sql`excluded.type`,
-        aiTags: sql`excluded.ai_tags`
-      }
-    });
+    ]);
   }
 }
 
