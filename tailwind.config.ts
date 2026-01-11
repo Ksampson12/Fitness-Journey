@@ -83,8 +83,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        display: ["var(--font-display)"],
+        sans: ["'Outfit'", "var(--font-sans)", "sans-serif"],
+        display: ["'Fredoka'", "var(--font-display)", "sans-serif"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
       },

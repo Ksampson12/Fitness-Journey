@@ -9,6 +9,7 @@ import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Onboarding from "@/pages/Onboarding";
 import Profile from "@/pages/Profile";
+import WorkoutPlayer from "@/pages/WorkoutPlayer";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -55,6 +56,9 @@ function Router() {
       </Route>
       <Route path="/profile">
         <ProtectedRoute component={Profile} />
+      </Route>
+      <Route path="/workout/:id">
+        <ProtectedRoute component={WorkoutPlayer} />
       </Route>
       
       {/* 404 */}

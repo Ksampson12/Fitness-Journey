@@ -25,7 +25,7 @@ export const userProfiles = pgTable("user_profiles", {
   completedNodeIds: text("completed_node_ids").array().notNull().default([]),
   
   // Avatar State
-  avatarArchetype: text("avatar_archetype").default("rookie").notNull(), // rookie, runner, lifter, yogi
+  avatarArchetype: text("avatar_archetype").default("shark").notNull(), // shark, dolphin
   evolutionStage: integer("evolution_stage").default(1).notNull(),
   equippedItems: text("equipped_items").array().default([]),
   

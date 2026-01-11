@@ -1,12 +1,14 @@
 ## Packages
-framer-motion | Essential for gamified animations (rewards, transitions, map interactions)
-clsx | Utility for conditional classes
-tailwind-merge | Utility for merging tailwind classes safely
+canvas-confetti | For celebration effects when completing workouts
+@types/canvas-confetti | Types for confetti
+date-fns | For date comparisons (avatar active state)
+framer-motion | For smooth animations (avatars, map nodes, transitions)
+clsx | Class name utility
+tailwind-merge | Class merging utility
 
 ## Notes
 Tailwind Config - extend fontFamily:
 fontFamily: {
-  sans: ["var(--font-sans)"],
-  display: ["var(--font-display)"],
-  mono: ["var(--font-mono)"],
+  display: ["'Fredoka'", "sans-serif"],
+  body: ["'Outfit'", "sans-serif"],
 }

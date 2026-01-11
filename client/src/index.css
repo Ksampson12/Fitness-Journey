@@ -1,82 +1,115 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Gamified Dark Mode Palette - Neon Cyberpunk Vibes */
-  --font-sans: 'Outfit', sans-serif;
-  --font-display: 'Rajdhani', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --background: 240 10% 4%;
-  --foreground: 0 0% 98%;
-
-  --card: 240 10% 7%;
-  --card-foreground: 0 0% 98%;
-
-  --popover: 240 10% 7%;
-  --popover-foreground: 0 0% 98%;
-
-  /* Neon Green/Cyan Primary */
-  --primary: 160 84% 39%;
-  --primary-foreground: 0 0% 100%;
-
-  /* Electric Blue Secondary */
-  --secondary: 217 91% 60%;
-  --secondary-foreground: 0 0% 100%;
-
-  --muted: 240 5% 15%;
-  --muted-foreground: 240 5% 65%;
-
-  --accent: 280 70% 50%;
-  --accent-foreground: 0 0% 98%;
-
+  /* Beach Day Theme */
+  --background: 210 60% 98%;      /* Very light blue/white */
+  --foreground: 222 47% 11%;      /* Deep navy */
+  
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  
+  --primary: 195 85% 45%;         /* Ocean Blue */
+  --primary-foreground: 210 40% 98%;
+  
+  --secondary: 45 90% 60%;        /* Sunny Yellow / Sandy */
+  --secondary-foreground: 222 47% 11%;
+  
+  --muted: 210 40% 90%;
+  --muted-foreground: 215 16% 47%;
+  
+  --accent: 170 80% 40%;          /* Seafoam/Teal */
+  --accent-foreground: 210 40% 98%;
+  
   --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive-foreground: 210 40% 98%;
 
-  --border: 240 5% 15%;
-  --input: 240 5% 15%;
-  --ring: 160 84% 39%;
+  --border: 214 32% 85%;
+  --input: 214 32% 85%;
+  --ring: 195 85% 45%;
+  
+  --radius: 1rem;
+}
 
-  --radius: 0.75rem;
+.dark {
+  /* Deep Ocean Night Theme */
+  --background: 222 47% 8%;       /* Very dark navy */
+  --foreground: 210 40% 98%;
+  
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+  
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  
+  --primary: 190 90% 50%;         /* Cyan/Electric Blue */
+  --primary-foreground: 222 47% 11%;
+  
+  --secondary: 320 70% 60%;       /* Sunset Purple/Pink */
+  --secondary-foreground: 210 40% 98%;
+  
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  
+  --accent: 160 84% 39%;          /* Bioluminescent Green */
+  --accent-foreground: 222 47% 11%;
+  
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 210 40% 98%;
+  
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 190 90% 50%;
 }
 
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
-    font-family: var(--font-sans);
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    @apply font-bold tracking-wide uppercase;
-  }
-}
-
-@layer components {
-  .neon-border {
-    @apply border border-primary/50 shadow-[0_0_10px_rgba(16,185,129,0.2)];
+    @apply bg-background text-foreground antialiased selection:bg-primary/30;
+    font-family: 'Outfit', sans-serif;
   }
   
-  .neon-text {
-    @apply text-primary drop-shadow-[0_0_5px_rgba(16,185,129,0.5)];
-  }
-
-  .glass-panel {
-    @apply bg-card/60 backdrop-blur-md border border-white/10;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka', sans-serif;
+    @apply tracking-wide;
   }
 }
 
-/* Scrollbar styling for map */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }
-::-webkit-scrollbar-track {
-  @apply bg-background;
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-muted rounded-full hover:bg-muted-foreground/50 transition-colors;
+
+/* Custom Surfboard Shape */
+.clip-surfboard {
+  clip-path: ellipse(40% 50% at 50% 50%);
+}
+
+/* Water Background Effect */
+.bg-ocean-pattern {
+  background-color: hsl(var(--background));
+  background-image: radial-gradient(circle at 25px 25px, hsl(var(--primary)/0.1) 2%, transparent 0%), 
+                    radial-gradient(circle at 75px 75px, hsl(var(--primary)/0.1) 2%, transparent 0%);
+  background-size: 100px 100px;
 }
