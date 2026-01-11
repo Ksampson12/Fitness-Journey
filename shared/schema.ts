@@ -37,6 +37,7 @@ export const userProfiles = pgTable("user_profiles", {
   activities: text("activities").array().default([]), // running, swimming, weightlifting, etc
   
   weeklyPlan: jsonb("weekly_plan"), // Stores AI generated weekly schedule and motivation
+  nodeScheduleMap: jsonb("node_schedule_map"), // Maps nodeId -> scheduleIndex for explicit workout assignment
   
   // Physical Stats
   age: integer("age"),
@@ -76,7 +77,8 @@ export const workouts = pgTable("workouts", {
   userId: varchar("user_id").notNull(), // Links to auth.users.id
   nodeId: text("node_id").notNull(), // Which node this workout is for
   
-  source: text("source").notNull(), // ai, template
+  source: text("source").notNull(), // ai, template, weekly-plan
+  scheduleIndex: integer("schedule_index"), // Which day index from weekly plan (0-indexed)
   workoutJson: jsonb("workout_json").notNull(), // The actual AI generated workout structure
   
   completedAt: timestamp("completed_at"),

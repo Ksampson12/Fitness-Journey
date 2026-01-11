@@ -131,6 +131,12 @@ export async function registerRoutes(
         };
       }
 
+      // The weekly plan serves as a BLUEPRINT - a reusable template that cycles weekly
+      // Each node draws from this blueprint based on its position in the user's journey
+      // Node 0 -> Day 0, Node 1 -> Day 1, ..., Node 7 -> Day 0 (cycling), etc.
+      // This allows infinite map growth while maintaining personalized workouts
+      console.log("[Onboarding] Weekly plan created as reusable blueprint for journey progression");
+
       if (profile) {
         profile = await storage.updateUserProfile(userId, {
           ...input,
@@ -207,54 +213,86 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Node locked or profile missing" });
       }
 
-      // Check for existing active workout
-      let workout = await storage.findActiveWorkout(userId, nodeId);
+      const allNodes = await storage.getMapNodes();
+      const node = allNodes.find(n => n.id === nodeId);
 
-      if (!workout) {
-        const nodes = await storage.getMapNodes();
-        const node = nodes.find(n => n.id === nodeId);
+      // Check for existing active workout for this node
+      let workout = await storage.findActiveWorkout(userId, nodeId);
+      
+      if (workout) {
+        // Return existing workout - user is resuming or replaying
+        console.log(`[StartNode] Found existing workout ${workout.id} for node ${nodeId}`);
+      } else {
+        // Create new workout using the weekly plan as a BLUEPRINT
+        // The weekly plan cycles: node 0 -> day 0, node 1 -> day 1, ..., node 7 -> day 0, etc.
         
-        let workoutJson = {
+        let workoutJson: any = {
           title: node?.name || "Workout",
           exercises: [
             { name: "Jumping Jacks", duration: "60s", reps: null },
             { name: "Pushups", duration: null, reps: "10" }
           ]
         };
+        let scheduleIndex: number | undefined;
 
-        // Try to retrieve pre-generated workout from weekly plan
         if (profile.weeklyPlan) {
            const plan = profile.weeklyPlan as any;
-           // Map node order to schedule index. 
-           // Assuming the schedule array in weeklyPlan contains the workouts in order.
-           // Note: The AI generates a 7-day schedule, but some days might be rest days or empty.
-           // For simplicity, we'll try to find the Nth non-rest workout in the schedule to match the Node Order.
+           const schedule = plan.schedule || [];
            
-           const workoutDays = plan.schedule?.filter((d: any) => d.focus.toLowerCase() !== "rest" && d.exercises && d.exercises.length > 0);
-           const planIndex = (node?.orderIndex || 1) - 1;
+           // Get workout days (days with exercises)
+           const workoutDays: { day: any, originalIndex: number }[] = [];
+           schedule.forEach((day: any, index: number) => {
+             if (day.exercises && day.exercises.length > 0) {
+               workoutDays.push({ day, originalIndex: index });
+             }
+           });
            
-           if (workoutDays && workoutDays[planIndex]) {
-             const plannedWorkout = workoutDays[planIndex];
+           if (workoutDays.length > 0) {
+             // Sort all nodes globally to find this node's position
+             const allZones = await storage.getMapZones();
+             const zoneOrderMap = new Map(allZones.map((z: any) => [z.id, z.orderIndex]));
+             
+             const sortedNodes = [...allNodes]
+               .filter((n: any) => n.type === "workout" || n.type === "boss")
+               .sort((a: any, b: any) => {
+                 const zoneOrderA = zoneOrderMap.get(a.zoneId) ?? 0;
+                 const zoneOrderB = zoneOrderMap.get(b.zoneId) ?? 0;
+                 if (zoneOrderA !== zoneOrderB) return zoneOrderA - zoneOrderB;
+                 return (a.orderIndex || 0) - (b.orderIndex || 0);
+               });
+             
+             // Find this node's global position
+             const globalNodeIndex = sortedNodes.findIndex(n => n.id === nodeId);
+             
+             // Cycle through workout days based on node position
+             // This creates a weekly rhythm that repeats as the user progresses
+             const dayPosition = globalNodeIndex % workoutDays.length;
+             const selectedDay = workoutDays[dayPosition];
+             scheduleIndex = selectedDay.originalIndex;
+             
              workoutJson = {
-               title: `${plannedWorkout.day}: ${plannedWorkout.focus}`,
-               exercises: plannedWorkout.exercises
+               title: `${selectedDay.day.day}: ${selectedDay.day.focus}`,
+               exercises: selectedDay.day.exercises,
+               duration: selectedDay.day.duration,
+               notes: selectedDay.day.notes
              };
-             console.log(`Using pre-generated plan for node ${nodeId}`);
+             
+             console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> Week Day ${dayPosition + 1}: ${selectedDay.day.day}`);
            } else {
-             console.log(`No pre-generated workout found for node ${nodeId} (Index ${planIndex}), falling back to default.`);
+             console.log(`[StartNode] No workout days in plan for node ${nodeId}, using fallback.`);
            }
+        } else {
+          console.log(`[StartNode] No weekly plan found for user, using fallback workout.`);
         }
 
         workout = await storage.createWorkout({
           userId,
           nodeId,
           source: "weekly-plan",
+          scheduleIndex,
           workoutJson,
         });
       }
-
-      const allNodes = await storage.getMapNodes();
-      const node = allNodes.find(n => n.id === nodeId);
 
       res.json({
         workoutId: workout.id,
