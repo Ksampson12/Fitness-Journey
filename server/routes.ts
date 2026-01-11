@@ -239,5 +239,62 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.game.quickFit.path, requireAuth, async (req: any, res) => {
+    try {
+      const { duration, focus, intensity, mood } = api.game.quickFit.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      const profile = await storage.getUserProfile(userId);
+
+      let workoutJson = {
+        title: `Quick ${duration}min ${focus}`,
+        exercises: [
+           { name: "Jumping Jacks", duration: "60s", reps: null },
+           { name: "Burpees", duration: null, reps: "15" }
+        ]
+      };
+
+      try {
+        if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+           const systemPrompt = `You are an expert personal trainer creating a ${duration}-minute "QuickFit" workout.
+           User Profile: Level ${profile?.fitnessLevel}, Equipment: ${profile?.equipment?.join(', ') || 'None'}.
+           Session Goals: Focus: ${focus}, Intensity: ${intensity}, Mood: ${mood || 'Neutral'}.
+           Generate a structured JSON workout plan.`;
+           
+           const completion = await openai.chat.completions.create({
+             model: "gpt-5.1",
+             messages: [
+               { role: "system", content: systemPrompt },
+               { role: "user", content: "Generate workout JSON: { title: string, exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[] }" }
+             ],
+             response_format: { type: "json_object" }
+           });
+           const content = completion.choices[0].message.content;
+           if (content) {
+             workoutJson = JSON.parse(content);
+           }
+        }
+      } catch (e) {
+        console.error("AI Generation failed, using template", e);
+      }
+
+      // We use "quick-fit" as a special node ID
+      const workout = await storage.createWorkout({
+        userId,
+        nodeId: "quick-fit",
+        source: "quick-fit-ai",
+        workoutJson,
+      });
+
+      res.json({
+        workoutId: workout.id,
+        workout: workout.workoutJson
+      });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

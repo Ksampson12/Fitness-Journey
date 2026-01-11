@@ -119,6 +119,23 @@ export const api = {
         }),
       },
     },
+    quickFit: {
+      method: 'POST' as const,
+      path: '/api/game/quick-fit',
+      input: z.object({
+        duration: z.enum(['30', '60']), // minutes
+        focus: z.string(), // e.g. "Full Body"
+        intensity: z.string(), // e.g. "High"
+        mood: z.string().optional(),
+      }),
+      responses: {
+        200: z.object({
+          workoutId: z.number(),
+          workout: z.any(),
+        }),
+        403: errorSchemas.unauthorized,
+      },
+    },
   },
 };
 

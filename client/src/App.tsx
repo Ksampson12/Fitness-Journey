@@ -8,6 +8,7 @@ import { useUserProfile } from "@/hooks/use-user";
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Onboarding from "@/pages/Onboarding";
+import QuickFit from "@/pages/QuickFit";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
@@ -52,6 +53,9 @@ function Router() {
       </Route>
       <Route path="/onboarding">
         <ProtectedRoute component={Onboarding} />
+      </Route>
+      <Route path="/quickfit">
+        <ProtectedRoute component={QuickFit} />
       </Route>
       <Route path="/profile">
         <ProtectedRoute component={Profile} />

@@ -7,6 +7,7 @@ export function Navigation() {
 
   const links = [
     { href: "/", icon: Map, label: "Journey" },
+    { href: "/quickfit", icon: Dumbbell, label: "QuickFit" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
 
