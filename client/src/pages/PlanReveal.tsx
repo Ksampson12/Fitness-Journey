@@ -36,7 +36,11 @@ export default function PlanReveal() {
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <Quote className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-xl font-display font-bold text-white mb-4">Trainer's Note</h2>
+          <h2 className="text-xl font-display font-bold text-white mb-4">The Strategy</h2>
+          <p className="text-gray-300 leading-relaxed mb-4">
+            {plan.explanation}
+          </p>
+          <div className="h-px bg-white/10 my-4" />
           <p className="text-gray-300 italic leading-relaxed">
             "{plan.motivation}"
           </p>

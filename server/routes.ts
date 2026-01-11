@@ -56,21 +56,31 @@ export async function registerRoutes(
       let weeklyPlan = null;
       try {
         if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-           const systemPrompt = `You are an expert personal trainer. Create a personalized 7-day weekly workout schedule and a motivational message for a new client.
+           const systemPrompt = `You are an expert personal trainer. Create a DETAILED 7-day weekly workout plan for a new client.
            Client: ${input.displayName}, Level: ${input.fitnessLevel}, Goal: ${input.goals.join(', ')}.
            Equipment: ${input.equipment.join(', ')}. Activities: ${input.activities.join(', ')}.
-           The 'motivation' should explain WHY this plan works for them and ask them to trust the process.
+           
+           You must generate the specific exercises for EACH workout day.
+           The 'explanation' should briefly explain how this specific plan was tailored to their goals (e.g. "Because you chose Strength and have Dumbbells, we focused on...").
+           
            Response JSON format: { 
-             schedule: { day: string, focus: string, duration: string, notes: string }[], 
+             schedule: { 
+               day: string, 
+               focus: string, 
+               duration: string, 
+               notes: string,
+               exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[]
+             }[], 
              motivation: string,
-             trainerNote: string
+             trainerNote: string,
+             explanation: string
            }`;
            
            const completion = await openai.chat.completions.create({
              model: "gpt-5.1",
              messages: [
                { role: "system", content: systemPrompt },
-               { role: "user", content: "Generate weekly plan." }
+               { role: "user", content: "Generate detailed weekly plan." }
              ],
              response_format: { type: "json_object" }
            });
@@ -84,12 +94,40 @@ export async function registerRoutes(
         // Fallback plan
         weeklyPlan = {
           schedule: [
-            { day: "Monday", focus: "Full Body Start", duration: "30m", notes: "Kick off the week strong" },
-            { day: "Wednesday", focus: "Cardio & Core", duration: "30m", notes: "Keep the heart rate up" },
-            { day: "Friday", focus: "Strength & Power", duration: "45m", notes: "Finish strong" }
+            { 
+              day: "Monday", 
+              focus: "Full Body Start", 
+              duration: "30m", 
+              notes: "Kick off the week strong",
+              exercises: [
+                { name: "Jumping Jacks", duration: "60s", reps: null, sets: 3 },
+                { name: "Pushups", duration: null, reps: "10", sets: 3 }
+              ]
+            },
+            { 
+              day: "Wednesday", 
+              focus: "Cardio & Core", 
+              duration: "30m", 
+              notes: "Keep the heart rate up",
+              exercises: [
+                { name: "High Knees", duration: "45s", reps: null, sets: 3 },
+                { name: "Plank", duration: "60s", reps: null, sets: 3 }
+              ]
+            },
+            { 
+              day: "Friday", 
+              focus: "Strength & Power", 
+              duration: "45m", 
+              notes: "Finish strong",
+              exercises: [
+                { name: "Squats", duration: null, reps: "15", sets: 3 },
+                { name: "Lunges", duration: null, reps: "12", sets: 3 }
+              ]
+            }
           ],
           motivation: "Consistency is key. Trust the process and you will see results.",
-          trainerNote: "Let's get to work!"
+          trainerNote: "Let's get to work!",
+          explanation: "We built this foundation phase to get you moving."
         };
       }
 
@@ -173,11 +211,9 @@ export async function registerRoutes(
       let workout = await storage.findActiveWorkout(userId, nodeId);
 
       if (!workout) {
-        // Generate new workout via AI or Template
         const nodes = await storage.getMapNodes();
         const node = nodes.find(n => n.id === nodeId);
         
-        // Default template
         let workoutJson = {
           title: node?.name || "Workout",
           exercises: [
@@ -186,50 +222,33 @@ export async function registerRoutes(
           ]
         };
 
-        try {
-          // Attempt AI generation
-          if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-             // Check if we have a weekly plan day for this node
-             // We map node.orderIndex (1-based) to the weekly plan schedule index (0-based)
-             const planIndex = (node?.orderIndex || 1) - 1;
-             const planDay = (profile.weeklyPlan as any)?.schedule?.[planIndex];
-             
-             let systemPrompt = "You are a fitness trainer. Generate a JSON workout based on user stats and node type.";
-             let userPrompt = `Node: ${node?.name}, Type: ${node?.type}, Difficulty: ${node?.difficulty}. User Level: ${profile.fitnessLevel}. Equipment: ${profile.equipment?.join(', ') || 'None'}.`;
-             
-             if (planDay) {
-               // If we have a planned day, force the AI to generate THAT workout
-               systemPrompt = `You are an expert personal trainer executing Day ${planIndex + 1} of a personalized weekly plan.
-               The plan for today is: ${planDay.focus}. Notes: ${planDay.notes}. Duration: ${planDay.duration}.
-               Generate the specific exercises, sets, and reps for this session.
-               User Level: ${profile.fitnessLevel}. Equipment: ${profile.equipment?.join(', ') || 'None'}.`;
-               userPrompt = `Generate full workout JSON for: ${planDay.focus}`;
-               
-               // Update title to match plan
-               workoutJson.title = `${planDay.day}: ${planDay.focus}`;
-             }
-
-             const completion = await openai.chat.completions.create({
-               model: "gpt-5.1",
-               messages: [
-                 { role: "system", content: systemPrompt + " Response format: { title: string, exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[] }" },
-                 { role: "user", content: userPrompt }
-               ],
-               response_format: { type: "json_object" }
-             });
-             const content = completion.choices[0].message.content;
-             if (content) {
-               workoutJson = JSON.parse(content);
-             }
-          }
-        } catch (e) {
-          console.error("AI Generation failed, using template", e);
+        // Try to retrieve pre-generated workout from weekly plan
+        if (profile.weeklyPlan) {
+           const plan = profile.weeklyPlan as any;
+           // Map node order to schedule index. 
+           // Assuming the schedule array in weeklyPlan contains the workouts in order.
+           // Note: The AI generates a 7-day schedule, but some days might be rest days or empty.
+           // For simplicity, we'll try to find the Nth non-rest workout in the schedule to match the Node Order.
+           
+           const workoutDays = plan.schedule?.filter((d: any) => d.focus.toLowerCase() !== "rest" && d.exercises && d.exercises.length > 0);
+           const planIndex = (node?.orderIndex || 1) - 1;
+           
+           if (workoutDays && workoutDays[planIndex]) {
+             const plannedWorkout = workoutDays[planIndex];
+             workoutJson = {
+               title: `${plannedWorkout.day}: ${plannedWorkout.focus}`,
+               exercises: plannedWorkout.exercises
+             };
+             console.log(`Using pre-generated plan for node ${nodeId}`);
+           } else {
+             console.log(`No pre-generated workout found for node ${nodeId} (Index ${planIndex}), falling back to default.`);
+           }
         }
 
         workout = await storage.createWorkout({
           userId,
           nodeId,
-          source: "ai",
+          source: "weekly-plan",
           workoutJson,
         });
       }
