@@ -11,6 +11,7 @@ export interface IStorage {
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile>;
+  deleteUserProfile(userId: string): Promise<void>;
   
   // Map Data
   getMapNodes(): Promise<GameNode[]>;
@@ -43,6 +44,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userProfiles.userId, userId))
       .returning();
     return updated;
+  }
+
+  async deleteUserProfile(userId: string): Promise<void> {
+    await db.delete(userProfiles).where(eq(userProfiles.userId, userId));
   }
 
   async getMapNodes(): Promise<GameNode[]> {

@@ -3,7 +3,7 @@ import { useUserProfile, useUpdateProfile } from "@/hooks/use-user";
 import { useAuth } from "@/hooks/use-auth";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, User, Edit } from "lucide-react";
+import { LogOut, Settings, User, Edit, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@shared/routes";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
 export default function Profile() {
   const { data: profile } = useUserProfile();
@@ -28,6 +31,8 @@ export default function Profile() {
   const updateProfile = useUpdateProfile();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -37,6 +42,24 @@ export default function Profile() {
     weight: "",
     equipment: [] as string[],
     activities: [] as string[]
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(api.user.resetProfile.path, {
+        method: api.user.resetProfile.method,
+      });
+      if (!res.ok) throw new Error("Failed to reset profile");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.user.getProfile.path] });
+      // Force reload to clear cache and redirect to onboarding
+      window.location.href = "/onboarding";
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to reset profile", variant: "destructive" });
+    }
   });
 
   if (!profile) return null;
@@ -271,13 +294,29 @@ export default function Profile() {
             </section>
           )}
 
-          <Button 
-            variant="destructive" 
-            className="w-full mt-8" 
-            onClick={() => logout()}
-          >
-            <LogOut className="w-4 h-4 mr-2" /> Log Out
-          </Button>
+          <div className="space-y-4 mt-8">
+            <Button 
+              variant="outline" 
+              className="w-full text-destructive border-destructive/20 hover:bg-destructive/10" 
+              onClick={() => {
+                if (confirm("Are you sure? This will delete all your progress and redirect you to onboarding.")) {
+                  resetMutation.mutate();
+                }
+              }}
+              disabled={resetMutation.isPending}
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> 
+              {resetMutation.isPending ? "Resetting..." : "Reset Journey (Dev)"}
+            </Button>
+
+            <Button 
+              variant="ghost" 
+              className="w-full" 
+              onClick={() => logout()}
+            >
+              <LogOut className="w-4 h-4 mr-2" /> Log Out
+            </Button>
+          </div>
         </div>
       </div>
       

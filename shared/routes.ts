@@ -67,6 +67,13 @@ export const api = {
         200: z.any(), // Returns updated UserProfile
       },
     },
+    resetProfile: {
+      method: 'DELETE' as const,
+      path: '/api/user/profile',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+      },
+    },
   },
   map: {
     get: {

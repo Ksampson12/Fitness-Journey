@@ -97,6 +97,17 @@ export async function registerRoutes(
     }
   });
 
+  app.delete(api.user.resetProfile.path, requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteUserProfile(userId);
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // === Map Routes ===
   app.get(api.map.get.path, async (req, res) => {
     const nodes = await storage.getMapNodes();
@@ -203,7 +214,7 @@ export async function registerRoutes(
       let newUnlockedNodes: string[] = [...profile.unlockedNodeIds];
       
       // Mark current as completed
-      const newCompletedNodes = [...new Set([...profile.completedNodeIds, workout.nodeId])];
+      const newCompletedNodes = Array.from(new Set([...profile.completedNodeIds, workout.nodeId]));
       
       // Find nodes that have this node as prerequisite
       const nextNodes = nodes.filter(n => n.prerequisites?.includes(workout.nodeId));
