@@ -37,8 +37,9 @@ export function useUpdateOnboarding() {
       if (!res.ok) throw new Error("Failed to update onboarding");
       return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.user.getProfile.path] });
+    onSuccess: (data) => {
+      // Immediately set the profile data in cache so PlanReveal has it instantly
+      queryClient.setQueryData([api.user.getProfile.path], data);
     },
   });
 }

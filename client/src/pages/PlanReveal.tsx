@@ -1,4 +1,5 @@
 import { useUserProfile } from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { CheckCircle2, Calendar, Quote, ArrowRight, Dumbbell, Target, Zap, Award } from "lucide-react";
@@ -6,10 +7,38 @@ import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 
 export default function PlanReveal() {
-  const { data: profile } = useUserProfile();
+  const { isLoading: authLoading } = useAuth();
+  const { data: profile, isFetching } = useUserProfile();
   const [, setLocation] = useLocation();
 
-  if (!profile || !profile.weeklyPlan) return null;
+  // Show loading state when:
+  // - Auth is resolving
+  // - Profile query is actively fetching
+  // - No profile data yet (cache empty or query hasn't completed)
+  if (authLoading || isFetching || !profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="font-mono text-xs text-primary animate-pulse uppercase tracking-wider">Analyzing Your Protocol...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If profile exists but no weekly plan, show fallback
+  if (!profile.weeklyPlan) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">No mission plan found.</p>
+          <Button onClick={() => setLocation("/onboarding")}>
+            Start Onboarding
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const plan = profile.weeklyPlan as any;
 
