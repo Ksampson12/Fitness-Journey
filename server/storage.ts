@@ -100,33 +100,95 @@ export class DatabaseStorage implements IStorage {
       { id: "zone2", name: "Iron Canyon", theme: "canyon", orderIndex: 2 },
     ]);
 
-    // Create Nodes
+    // Create Nodes - 7 per zone (one for each day of the weekly plan)
+    // Day 1: Full-Body Strength, Day 2: Light Cardio + Core, Day 3: Upper-Body Strength
+    // Day 4: Active Recovery, Day 5: Lower-Body Strength, Day 6: Cardio + Core, Day 7: Rest
     await db.insert(nodes).values([
-      // Zone 1
+      // Zone 1 - The Awakening Forest (Week 1)
       { 
-        id: "z1-n1", zoneId: "zone1", name: "First Steps", type: "workout", 
-        difficulty: 1, orderIndex: 1, x: 50, y: 80, 
-        aiTags: ["full-body", "beginner"],
+        id: "z1-n1", zoneId: "zone1", name: "Ancient Oak Awakening", type: "workout", 
+        difficulty: 1, orderIndex: 1, x: 50, y: 120, 
+        aiTags: ["full-body", "strength"],
         prerequisites: []
       },
       { 
-        id: "z1-n2", zoneId: "zone1", name: "River Run", type: "workout", 
-        difficulty: 2, orderIndex: 2, x: 150, y: 120, 
-        aiTags: ["cardio"],
+        id: "z1-n2", zoneId: "zone1", name: "Stream Stride", type: "workout", 
+        difficulty: 1, orderIndex: 2, x: 120, y: 80, 
+        aiTags: ["cardio", "core", "mobility"],
         prerequisites: ["z1-n1"]
       },
       { 
-        id: "z1-n3", zoneId: "zone1", name: "Bear Cave", type: "boss", 
-        difficulty: 3, orderIndex: 3, x: 250, y: 100, 
-        aiTags: ["strength", "upper-body"],
+        id: "z1-n3", zoneId: "zone1", name: "Canopy Climb", type: "workout", 
+        difficulty: 2, orderIndex: 3, x: 200, y: 110, 
+        aiTags: ["upper-body", "strength"],
         prerequisites: ["z1-n2"]
       },
-      // Zone 2
       { 
-        id: "z2-n1", zoneId: "zone2", name: "Rocky Ascent", type: "workout", 
-        difficulty: 4, orderIndex: 4, x: 350, y: 150, 
-        aiTags: ["legs", "endurance"],
+        id: "z1-n4", zoneId: "zone1", name: "Moss Meadow Rest", type: "recovery", 
+        difficulty: 1, orderIndex: 4, x: 280, y: 70, 
+        aiTags: ["recovery", "cardio"],
         prerequisites: ["z1-n3"]
+      },
+      { 
+        id: "z1-n5", zoneId: "zone1", name: "Root Strength", type: "workout", 
+        difficulty: 2, orderIndex: 5, x: 350, y: 100, 
+        aiTags: ["lower-body", "strength"],
+        prerequisites: ["z1-n4"]
+      },
+      { 
+        id: "z1-n6", zoneId: "zone1", name: "Forest Trail Run", type: "workout", 
+        difficulty: 2, orderIndex: 6, x: 420, y: 60, 
+        aiTags: ["cardio", "core"],
+        prerequisites: ["z1-n5"]
+      },
+      { 
+        id: "z1-n7", zoneId: "zone1", name: "Sunlit Glade", type: "recovery", 
+        difficulty: 1, orderIndex: 7, x: 490, y: 90, 
+        aiTags: ["rest", "recovery"],
+        prerequisites: ["z1-n6"]
+      },
+      // Zone 2 - Iron Canyon (Week 2)
+      { 
+        id: "z2-n1", zoneId: "zone2", name: "Iron Ridge Dawn", type: "workout", 
+        difficulty: 2, orderIndex: 8, x: 50, y: 120, 
+        aiTags: ["full-body", "strength"],
+        prerequisites: ["z1-n7"]
+      },
+      { 
+        id: "z2-n2", zoneId: "zone2", name: "Canyon Breeze", type: "workout", 
+        difficulty: 2, orderIndex: 9, x: 120, y: 80, 
+        aiTags: ["cardio", "core", "mobility"],
+        prerequisites: ["z2-n1"]
+      },
+      { 
+        id: "z2-n3", zoneId: "zone2", name: "Cliff Face Challenge", type: "workout", 
+        difficulty: 3, orderIndex: 10, x: 200, y: 110, 
+        aiTags: ["upper-body", "strength"],
+        prerequisites: ["z2-n2"]
+      },
+      { 
+        id: "z2-n4", zoneId: "zone2", name: "Echo Cave", type: "recovery", 
+        difficulty: 2, orderIndex: 11, x: 280, y: 70, 
+        aiTags: ["recovery", "cardio"],
+        prerequisites: ["z2-n3"]
+      },
+      { 
+        id: "z2-n5", zoneId: "zone2", name: "Boulder Squat", type: "workout", 
+        difficulty: 3, orderIndex: 12, x: 350, y: 100, 
+        aiTags: ["lower-body", "strength"],
+        prerequisites: ["z2-n4"]
+      },
+      { 
+        id: "z2-n6", zoneId: "zone2", name: "Ravine Rush", type: "workout", 
+        difficulty: 3, orderIndex: 13, x: 420, y: 60, 
+        aiTags: ["cardio", "core"],
+        prerequisites: ["z2-n5"]
+      },
+      { 
+        id: "z2-n7", zoneId: "zone2", name: "Summit Sunrise", type: "recovery", 
+        difficulty: 2, orderIndex: 14, x: 490, y: 90, 
+        aiTags: ["rest", "recovery"],
+        prerequisites: ["z2-n6"]
       }
     ]);
   }
