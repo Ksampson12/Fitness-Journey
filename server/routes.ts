@@ -13,6 +13,29 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
+function calculateStreak(currentStreak: number, lastActiveDate: Date | null): number {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  if (!lastActiveDate) {
+    return 1;
+  }
+  
+  const lastActive = new Date(lastActiveDate);
+  const lastActiveDay = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
+  
+  const diffTime = today.getTime() - lastActiveDay.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return currentStreak;
+  } else if (diffDays === 1) {
+    return currentStreak + 1;
+  } else {
+    return 1;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -344,10 +367,13 @@ export async function registerRoutes(
         }
       });
 
+      // Calculate streak properly
+      const newStreak = calculateStreak(profile.streak, profile.lastActiveDate);
+
       const updatedProfile = await storage.updateUserProfile(userId, {
         xp: profile.xp + xpGain,
         coins: profile.coins + coinsGain,
-        streak: profile.streak + 1, // Simplified streak logic
+        streak: newStreak,
         completedNodeIds: newCompletedNodes,
         unlockedNodeIds: newUnlockedNodes,
         lastActiveDate: new Date(),
