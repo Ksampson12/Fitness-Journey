@@ -66,10 +66,10 @@ export default function Home() {
             <div className="absolute -left-4 top-0 bottom-0 w-1 bg-white/5 rounded-full" />
             
             <div className="mb-6 pl-6">
-              <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest block mb-1">Zone {zone.orderIndex + 1}</span>
+              <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest block mb-1">Zone {zone.orderIndex}</span>
               <h2 className="text-2xl font-display font-bold text-white uppercase tracking-wide flex items-center gap-2">
                 {zone.name}
-                {zone.orderIndex > 0 && <Lock className="w-4 h-4 text-muted-foreground" />}
+                {zone.orderIndex > 1 && <Lock className="w-4 h-4 text-muted-foreground" />}
               </h2>
             </div>
 
