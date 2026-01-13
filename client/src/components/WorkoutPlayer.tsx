@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, Timer, Dumbbell, X, ArrowRight, Sparkles } from "lucide-react";
+import { CheckCircle, Timer, Dumbbell, X, ArrowRight, Sparkles, RotateCcw } from "lucide-react";
 import { useCompleteNode } from "@/hooks/use-game";
 
 type WorkoutPlayerProps = {
@@ -12,6 +12,50 @@ type WorkoutPlayerProps = {
   onClose: () => void;
 };
 
+type WorkoutProgress = {
+  workoutId: number;
+  stepIndex: number;
+  completedSets: number;
+  totalTimer: number;
+  exerciseTimer: number;
+  timestamp: number;
+};
+
+const PROGRESS_STORAGE_KEY = 'fitness-workout-progress';
+
+function saveProgress(progress: WorkoutProgress) {
+  try {
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  } catch (e) {
+    console.error('Failed to save workout progress', e);
+  }
+}
+
+function loadProgress(): WorkoutProgress | null {
+  try {
+    const data = localStorage.getItem(PROGRESS_STORAGE_KEY);
+    if (data) {
+      const progress = JSON.parse(data) as WorkoutProgress;
+      const hoursSinceLastActive = (Date.now() - progress.timestamp) / (1000 * 60 * 60);
+      if (hoursSinceLastActive < 24) {
+        return progress;
+      }
+      clearProgress();
+    }
+  } catch (e) {
+    console.error('Failed to load workout progress', e);
+  }
+  return null;
+}
+
+function clearProgress() {
+  try {
+    localStorage.removeItem(PROGRESS_STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to clear workout progress', e);
+  }
+}
+
 export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPlayerProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -20,6 +64,11 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const [completed, setCompleted] = useState(false);
   const [completedSets, setCompletedSets] = useState(0);
   const [allSetsComplete, setAllSetsComplete] = useState(false);
+  const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const savedProgressRef = useRef<WorkoutProgress | null>(null);
+  const skipNextResetRef = useRef(false);
+  const lastStepIndexRef = useRef<number | null>(null);
   
   const completeMutation = useCompleteNode();
 
@@ -29,7 +78,7 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const totalSets = typeof currentStep?.sets === 'number' ? currentStep.sets : 0;
   const isSetBasedExercise = totalSets > 0;
 
-  const parseDuration = (duration: string | undefined): number | null => {
+  const parseDuration = useCallback((duration: string | undefined): number | null => {
     if (!duration) return null;
     const lower = duration.toLowerCase();
     const minuteMatch = lower.match(/(\d+)(?:–|-)?(\d+)?\s*min/);
@@ -37,34 +86,96 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
     if (minuteMatch) return parseInt(minuteMatch[1]) * 60;
     if (secondMatch) return parseInt(secondMatch[1]);
     return null;
-  };
+  }, []);
 
   const exerciseDuration = parseDuration(currentStep?.duration);
   const isTimedExercise = exerciseDuration !== null && exerciseDuration > 0;
+  const isTimedWithSets = isTimedExercise && isSetBasedExercise;
 
+  // Check for saved progress on open
   useEffect(() => {
-    if (isTimedExercise) {
-      setExerciseTimer(exerciseDuration);
-    } else {
-      setExerciseTimer(0);
+    if (isOpen && !hasRestoredProgress) {
+      const savedProgress = loadProgress();
+      if (savedProgress && savedProgress.workoutId === workoutId) {
+        savedProgressRef.current = savedProgress;
+        setShowResumePrompt(true);
+      }
+      setHasRestoredProgress(true);
     }
-    setCompletedSets(0);
-    setAllSetsComplete(false);
-  }, [stepIndex, isTimedExercise, exerciseDuration]);
+  }, [isOpen, workoutId, hasRestoredProgress]);
 
-  const handleCompleteSet = () => {
+  const handleResumeWorkout = () => {
+    const progress = savedProgressRef.current;
+    if (progress) {
+      skipNextResetRef.current = true;
+      lastStepIndexRef.current = progress.stepIndex;
+      setStepIndex(progress.stepIndex);
+      setCompletedSets(progress.completedSets);
+      setTotalTimer(progress.totalTimer);
+      setExerciseTimer(progress.exerciseTimer);
+      if (progress.completedSets >= (steps[progress.stepIndex]?.sets || 0) && (steps[progress.stepIndex]?.sets || 0) > 0) {
+        setAllSetsComplete(true);
+      }
+    }
+    setShowResumePrompt(false);
+  };
+
+  const handleStartFresh = () => {
+    clearProgress();
+    savedProgressRef.current = null;
+    setShowResumePrompt(false);
+  };
+
+  // Reset exercise state when moving to a new step (only if not restoring)
+  useEffect(() => {
+    // Skip reset if we just restored progress
+    if (skipNextResetRef.current && stepIndex === lastStepIndexRef.current) {
+      skipNextResetRef.current = false;
+      return;
+    }
+    
+    if (!showResumePrompt) {
+      if (isTimedExercise) {
+        setExerciseTimer(exerciseDuration);
+      } else {
+        setExerciseTimer(0);
+      }
+      setCompletedSets(0);
+      setAllSetsComplete(false);
+    }
+  }, [stepIndex, isTimedExercise, exerciseDuration, showResumePrompt]);
+
+  // Handle completing a set (for rep-based exercises)
+  const handleCompleteSet = useCallback(() => {
     if (completedSets < totalSets) {
       const newCompleted = completedSets + 1;
       setCompletedSets(newCompleted);
+      
+      // For timed exercises with sets, reset the timer for the next set
+      if (isTimedWithSets && exerciseDuration && newCompleted < totalSets) {
+        setExerciseTimer(exerciseDuration);
+      }
+      
       if (newCompleted === totalSets) {
         setAllSetsComplete(true);
       }
     }
-  };
+  }, [completedSets, totalSets, isTimedWithSets, exerciseDuration]);
 
+  // Auto-complete set when timer reaches 0 for timed exercises with sets
+  useEffect(() => {
+    if (isTimedWithSets && exerciseTimer === 0 && completedSets < totalSets && !allSetsComplete) {
+      const timer = setTimeout(() => {
+        handleCompleteSet();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [exerciseTimer, isTimedWithSets, completedSets, totalSets, allSetsComplete, handleCompleteSet]);
+
+  // Main timer logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isPlaying) {
+    if (isPlaying && !showResumePrompt) {
       interval = setInterval(() => {
         setTotalTimer((t) => t + 1);
         if (isTimedExercise) {
@@ -75,7 +186,41 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, isTimedExercise]);
+  }, [isPlaying, isTimedExercise, showResumePrompt]);
+
+  // Save progress periodically and on close
+  useEffect(() => {
+    if (isOpen && !completed && !showResumePrompt && stepIndex > 0 || completedSets > 0 || totalTimer > 30) {
+      const progress: WorkoutProgress = {
+        workoutId,
+        stepIndex,
+        completedSets,
+        totalTimer,
+        exerciseTimer,
+        timestamp: Date.now(),
+      };
+      saveProgress(progress);
+    }
+  }, [isOpen, completed, workoutId, stepIndex, completedSets, totalTimer, exerciseTimer, showResumePrompt]);
+
+  const handleClose = () => {
+    if (!completed) {
+      const progress: WorkoutProgress = {
+        workoutId,
+        stepIndex,
+        completedSets,
+        totalTimer,
+        exerciseTimer,
+        timestamp: Date.now(),
+      };
+      saveProgress(progress);
+    }
+    // Reset state flags so resume check runs on next open
+    setHasRestoredProgress(false);
+    skipNextResetRef.current = false;
+    lastStepIndexRef.current = null;
+    onClose();
+  };
 
   const handleNext = () => {
     if (stepIndex < steps.length - 1) {
@@ -88,6 +233,11 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const handleFinish = async () => {
     setIsPlaying(false);
     setCompleted(true);
+    clearProgress();
+    // Reset state flags
+    setHasRestoredProgress(false);
+    skipNextResetRef.current = false;
+    lastStepIndexRef.current = null;
     try {
       await completeMutation.mutateAsync({
         workoutId,
@@ -109,9 +259,52 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md w-full h-[90vh] sm:h-auto p-0 border-none bg-background overflow-hidden flex flex-col">
-        {completed ? (
+        {/* Resume Prompt */}
+        {showResumePrompt ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center"
+            >
+              <RotateCcw className="w-10 h-10 text-primary" />
+            </motion.div>
+            
+            <div>
+              <h2 className="text-2xl font-display text-white mb-2">Resume Workout?</h2>
+              <p className="text-muted-foreground text-sm">
+                You have an unfinished workout. Would you like to continue where you left off?
+              </p>
+              {savedProgressRef.current && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Exercise {savedProgressRef.current.stepIndex + 1}/{steps.length} - {formatTime(savedProgressRef.current.totalTimer)} elapsed
+                </p>
+              )}
+            </div>
+
+            <div className="w-full space-y-3">
+              <Button 
+                onClick={handleResumeWorkout} 
+                size="lg" 
+                className="w-full"
+                data-testid="button-resume-workout"
+              >
+                Resume Workout
+              </Button>
+              <Button 
+                onClick={handleStartFresh} 
+                variant="outline" 
+                size="lg" 
+                className="w-full"
+                data-testid="button-start-fresh"
+              >
+                Start Fresh
+              </Button>
+            </div>
+          </div>
+        ) : completed ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6 text-center">
              <motion.div
                initial={{ scale: 0 }}
@@ -137,7 +330,7 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                </div>
              </div>
 
-             <Button onClick={onClose} size="lg" className="w-full" data-testid="button-return-map">Return to Map</Button>
+             <Button onClick={handleClose} size="lg" className="w-full" data-testid="button-return-map">Return to Map</Button>
           </div>
         ) : (
           <>
@@ -154,7 +347,7 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{stepIndex + 1}/{steps.length}</span>
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white" data-testid="button-close-workout">
+                <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 rounded-full text-muted-foreground hover:text-white" data-testid="button-close-workout">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -187,8 +380,8 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                   className="w-full"
                 >
                   {/* Exercise Card */}
-                  <div className={`w-full rounded-2xl border p-6 transition-colors duration-300 ${
-                    allSetsComplete || (isTimedExercise && exerciseTimer === 0)
+                  <div className={`w-full rounded-2xl border p-6 transition-colors duration-300 relative ${
+                    allSetsComplete || (isTimedExercise && !isSetBasedExercise && exerciseTimer === 0)
                       ? 'bg-primary/5 border-primary/30'
                       : 'bg-card/50 border-white/10'
                   }`}>
@@ -219,9 +412,9 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                       {currentStep?.name || "Exercise"}
                     </h3>
 
-                    {/* Set Buttons Row - only for set-based exercises */}
+                    {/* Set Buttons Row - for set-based exercises */}
                     {isSetBasedExercise && (
-                      <div className="flex justify-center gap-2 mb-4">
+                      <div className="flex justify-center gap-2 mb-4 flex-wrap">
                         {Array.from({ length: totalSets }).map((_, i) => (
                           <button
                             key={i}
@@ -263,15 +456,22 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                       )}
                     </div>
 
-                    {/* Small timer for set-based exercises */}
-                    {isSetBasedExercise && (
+                    {/* Set progress for set-based (non-timed) exercises */}
+                    {isSetBasedExercise && !isTimedExercise && (
                       <p className="text-center text-muted-foreground text-sm font-mono mb-4">
                         {formatTime(exerciseTimer)}
                       </p>
                     )}
 
-                    {/* Complete Set Button - only for set-based exercises */}
-                    {isSetBasedExercise && !allSetsComplete && (
+                    {/* Set progress text for timed exercises with sets */}
+                    {isTimedWithSets && (
+                      <p className="text-center text-muted-foreground text-sm mb-2">
+                        Set {Math.min(completedSets + 1, totalSets)} of {totalSets}
+                      </p>
+                    )}
+
+                    {/* Complete Set Button - only for non-timed set-based exercises */}
+                    {isSetBasedExercise && !isTimedExercise && !allSetsComplete && (
                       <div className="flex justify-center mb-4">
                         <Button
                           onClick={handleCompleteSet}
@@ -297,8 +497,8 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                       </motion.div>
                     )}
 
-                    {/* Timed exercise complete indicator */}
-                    {isTimedExercise && exerciseTimer === 0 && (
+                    {/* Timed exercise (no sets) complete indicator */}
+                    {isTimedExercise && !isSetBasedExercise && exerciseTimer === 0 && (
                       <motion.div 
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -322,11 +522,13 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                         <span className="text-sm font-bold text-primary uppercase tracking-wide">
                           {isSetBasedExercise && currentStep?.reps 
                             ? `${currentStep.sets} Sets x ${currentStep.reps}` 
-                            : currentStep?.reps 
-                              ? `${currentStep.reps}` 
-                              : currentStep?.duration 
-                                ? currentStep.duration 
-                                : "Complete exercise"}
+                            : isSetBasedExercise && currentStep?.duration
+                              ? `${currentStep.sets} Sets x ${currentStep.duration}`
+                              : currentStep?.reps 
+                                ? `${currentStep.reps}` 
+                                : currentStep?.duration 
+                                  ? currentStep.duration 
+                                  : "Complete exercise"}
                         </span>
                       </div>
                     </div>
