@@ -13,7 +13,11 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
-function calculateStreak(currentStreak: number, lastActiveDate: Date | null): number {
+function calculateStreak(
+  currentStreak: number, 
+  lastActiveDate: Date | null,
+  weeklyPlan?: any
+): number {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
@@ -32,6 +36,39 @@ function calculateStreak(currentStreak: number, lastActiveDate: Date | null): nu
   } else if (diffDays === 1) {
     return currentStreak + 1;
   } else {
+    // Check if the missed days were rest days in the weekly plan
+    if (weeklyPlan?.schedule) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      let allMissedDaysAreRestDays = true;
+      
+      // Check each missed day
+      for (let i = 1; i < diffDays; i++) {
+        const missedDate = new Date(lastActiveDay.getTime() + i * 24 * 60 * 60 * 1000);
+        const missedDayName = dayNames[missedDate.getDay()];
+        
+        // Find the corresponding day in the schedule
+        const scheduleDay = weeklyPlan.schedule.find((d: any) => 
+          d.day?.toLowerCase().includes(missedDayName.toLowerCase())
+        );
+        
+        // Check if it's a rest/recovery day
+        const isRestDay = scheduleDay?.focus?.toLowerCase().includes('rest') || 
+                          scheduleDay?.focus?.toLowerCase().includes('recovery') ||
+                          scheduleDay?.notes?.toLowerCase().includes('no heavy work');
+        
+        if (!isRestDay) {
+          allMissedDaysAreRestDays = false;
+          break;
+        }
+      }
+      
+      if (allMissedDaysAreRestDays) {
+        // All missed days were rest days, continue the streak
+        return currentStreak + 1;
+      }
+    }
+    
+    // Missed a workout day, reset streak
     return 1;
   }
 }
@@ -367,8 +404,8 @@ export async function registerRoutes(
         }
       });
 
-      // Calculate streak properly
-      const newStreak = calculateStreak(profile.streak, profile.lastActiveDate);
+      // Calculate streak properly (respects rest days from weekly plan)
+      const newStreak = calculateStreak(profile.streak, profile.lastActiveDate, profile.weeklyPlan);
 
       const updatedProfile = await storage.updateUserProfile(userId, {
         xp: profile.xp + xpGain,
