@@ -3,7 +3,7 @@ import { useUserProfile, useUpdateProfile } from "@/hooks/use-user";
 import { useAuth } from "@/hooks/use-auth";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, User, Edit, Trash2 } from "lucide-react";
+import { LogOut, Settings as SettingsIcon, User, Edit, Trash2, Bell } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -308,6 +308,15 @@ export default function Profile() {
           )}
 
           <div className="space-y-4 mt-8">
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => setLocation("/settings")}
+              data-testid="button-settings"
+            >
+              <Bell className="w-4 h-4 mr-2" /> Notifications & Settings
+            </Button>
+
             <Button 
               variant="outline" 
               className="w-full text-destructive border-destructive/20 hover:bg-destructive/10" 

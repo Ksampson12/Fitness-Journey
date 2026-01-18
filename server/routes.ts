@@ -7,11 +7,24 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import OpenAI from "openai";
+import webpush from "web-push";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
+
+// Configure web-push with VAPID keys
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    'mailto:fitness@example.com',
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+  );
+}
 
 function calculateStreak(
   currentStreak: number, 
@@ -487,6 +500,101 @@ export async function registerRoutes(
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // === Notification Routes ===
+  
+  // Get VAPID public key for push subscription
+  app.get("/api/notifications/vapid-public-key", (req, res) => {
+    if (!VAPID_PUBLIC_KEY) {
+      return res.status(500).json({ message: "Push notifications not configured" });
+    }
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+
+  // Subscribe to push notifications
+  app.post("/api/notifications/subscribe", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { subscription } = req.body;
+
+      if (!subscription) {
+        return res.status(400).json({ message: "Subscription required" });
+      }
+
+      await storage.updateUserProfile(userId, {
+        pushSubscription: subscription,
+        notificationsEnabled: true
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to save push subscription:", error);
+      res.status(500).json({ message: "Failed to save subscription" });
+    }
+  });
+
+  // Unsubscribe from push notifications
+  app.post("/api/notifications/unsubscribe", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      await storage.updateUserProfile(userId, {
+        pushSubscription: null,
+        notificationsEnabled: false
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to unsubscribe:", error);
+      res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+
+  // Update notification preferences
+  app.patch("/api/notifications/preferences", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { workoutReminderTime, streakReminderEnabled, notificationsEnabled } = req.body;
+
+      const updates: any = {};
+      if (typeof notificationsEnabled === 'boolean') updates.notificationsEnabled = notificationsEnabled;
+      if (typeof streakReminderEnabled === 'boolean') updates.streakReminderEnabled = streakReminderEnabled;
+      if (workoutReminderTime !== undefined) updates.workoutReminderTime = workoutReminderTime;
+
+      await storage.updateUserProfile(userId, updates);
+      const profile = await storage.getUserProfile(userId);
+
+      res.json({ success: true, profile });
+    } catch (error) {
+      console.error("Failed to update notification preferences:", error);
+      res.status(500).json({ message: "Failed to update preferences" });
+    }
+  });
+
+  // Test notification (for development)
+  app.post("/api/notifications/test", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getUserProfile(userId);
+
+      if (!profile?.pushSubscription || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+        return res.status(400).json({ message: "Push notifications not set up" });
+      }
+
+      const payload = JSON.stringify({
+        title: "Fitness Journey",
+        body: "Time for your workout! Your streak is at " + profile.streak + " days.",
+        type: "workout_reminder",
+        url: "/"
+      });
+
+      await webpush.sendNotification(profile.pushSubscription as any, payload);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to send test notification:", error);
+      res.status(500).json({ message: "Failed to send notification" });
     }
   });
 

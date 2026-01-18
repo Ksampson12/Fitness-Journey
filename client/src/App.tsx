@@ -11,6 +11,7 @@ import Onboarding from "@/pages/Onboarding";
 import QuickFit from "@/pages/QuickFit";
 import Goals from "@/pages/Goals";
 import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
 import PlanReveal from "@/pages/PlanReveal";
 import NotFound from "@/pages/not-found";
 
@@ -68,6 +69,9 @@ function Router() {
       </Route>
       <Route path="/profile">
         <ProtectedRoute component={Profile} />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={Settings} />
       </Route>
       
       {/* 404 */}

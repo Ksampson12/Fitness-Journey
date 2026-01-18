@@ -44,6 +44,12 @@ export const userProfiles = pgTable("user_profiles", {
   height: integer("height"), // in cm
   weight: integer("weight"), // in kg
 
+  // Notification Preferences
+  notificationsEnabled: boolean("notifications_enabled").default(false),
+  workoutReminderTime: text("workout_reminder_time"), // HH:MM format, e.g. "08:00"
+  streakReminderEnabled: boolean("streak_reminder_enabled").default(true),
+  pushSubscription: jsonb("push_subscription"), // Stores the push subscription object
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
