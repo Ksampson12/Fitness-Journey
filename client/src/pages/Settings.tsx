@@ -175,9 +175,17 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={streakReminderEnabled}
-                      onCheckedChange={(checked) => {
+                      onCheckedChange={async (checked) => {
                         setStreakReminderEnabled(checked);
-                        handleUpdatePreferences();
+                        try {
+                          await apiRequest("PATCH", "/api/notifications/preferences", {
+                            streakReminderEnabled: checked,
+                            workoutReminderTime
+                          });
+                          refetch();
+                        } catch (error) {
+                          toast({ title: "Error", description: "Failed to save preferences.", variant: "destructive" });
+                        }
                       }}
                       data-testid="switch-streak-reminder"
                     />

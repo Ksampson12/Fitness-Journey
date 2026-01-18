@@ -24,11 +24,20 @@ export async function subscribeToPushNotifications(): Promise<PushSubscription |
     }
 
     const response = await fetch('/api/notifications/vapid-public-key');
-    const { publicKey } = await response.json();
+    if (!response.ok) {
+      console.error('Failed to fetch VAPID public key:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    if (!data.publicKey) {
+      console.error('No public key in VAPID response');
+      return null;
+    }
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
+      applicationServerKey: urlBase64ToUint8Array(data.publicKey)
     });
 
     await apiRequest('POST', '/api/notifications/subscribe', {

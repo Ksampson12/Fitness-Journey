@@ -514,17 +514,32 @@ export async function registerRoutes(
   });
 
   // Subscribe to push notifications
+  const subscriptionSchema = z.object({
+    subscription: z.object({
+      endpoint: z.string().url(),
+      keys: z.object({
+        p256dh: z.string(),
+        auth: z.string()
+      })
+    })
+  });
+
   app.post("/api/notifications/subscribe", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { subscription } = req.body;
+      
+      const parseResult = subscriptionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid subscription format", errors: parseResult.error.errors });
+      }
 
-      if (!subscription) {
-        return res.status(400).json({ message: "Subscription required" });
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
       }
 
       await storage.updateUserProfile(userId, {
-        pushSubscription: subscription,
+        pushSubscription: parseResult.data.subscription,
         notificationsEnabled: true
       });
 
@@ -540,6 +555,11 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
 
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+
       await storage.updateUserProfile(userId, {
         pushSubscription: null,
         notificationsEnabled: false
@@ -553,10 +573,27 @@ export async function registerRoutes(
   });
 
   // Update notification preferences
+  const preferencesSchema = z.object({
+    workoutReminderTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+    streakReminderEnabled: z.boolean().optional(),
+    notificationsEnabled: z.boolean().optional()
+  });
+
   app.patch("/api/notifications/preferences", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { workoutReminderTime, streakReminderEnabled, notificationsEnabled } = req.body;
+      
+      const parseResult = preferencesSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid preferences format", errors: parseResult.error.errors });
+      }
+
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+
+      const { workoutReminderTime, streakReminderEnabled, notificationsEnabled } = parseResult.data;
 
       const updates: any = {};
       if (typeof notificationsEnabled === 'boolean') updates.notificationsEnabled = notificationsEnabled;
@@ -564,9 +601,9 @@ export async function registerRoutes(
       if (workoutReminderTime !== undefined) updates.workoutReminderTime = workoutReminderTime;
 
       await storage.updateUserProfile(userId, updates);
-      const profile = await storage.getUserProfile(userId);
+      const updatedProfile = await storage.getUserProfile(userId);
 
-      res.json({ success: true, profile });
+      res.json({ success: true, profile: updatedProfile });
     } catch (error) {
       console.error("Failed to update notification preferences:", error);
       res.status(500).json({ message: "Failed to update preferences" });
