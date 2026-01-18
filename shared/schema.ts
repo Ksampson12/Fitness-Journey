@@ -93,6 +93,38 @@ export const workouts = pgTable("workouts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// === EMAIL AUTHENTICATION TABLES ===
+
+// Email identities - links emails to user profiles
+export const emailIdentities = pgTable("email_identities", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  userId: varchar("user_id").notNull().unique(), // Links to user profile
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  lastVerifiedAt: timestamp("last_verified_at"), // For 30-day re-verification
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Magic link tokens for passwordless login
+export const magicLinkTokens = pgTable("magic_link_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// OTP codes for 30-day re-verification
+export const otpCodes = pgTable("otp_codes", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // === RELATIONS ===
 export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
   // One user can have many workouts (via userId, though typical ORM relation requires FK)
@@ -112,6 +144,23 @@ export const insertWorkoutSchema = createInsertSchema(workouts).omit({
   completionMetrics: true
 });
 
+export const insertEmailIdentitySchema = createInsertSchema(emailIdentities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMagicLinkTokenSchema = createInsertSchema(magicLinkTokens).omit({
+  id: true,
+  createdAt: true,
+  usedAt: true,
+});
+
+export const insertOtpCodeSchema = createInsertSchema(otpCodes).omit({
+  id: true,
+  createdAt: true,
+  usedAt: true,
+});
+
 // === EXPLICIT API CONTRACT TYPES ===
 
 // User State
@@ -125,6 +174,14 @@ export type GameZone = typeof zones.$inferSelect;
 // Workouts
 export type Workout = typeof workouts.$inferSelect;
 export type InsertWorkout = z.infer<typeof insertWorkoutSchema>;
+
+// Email Auth
+export type EmailIdentity = typeof emailIdentities.$inferSelect;
+export type InsertEmailIdentity = z.infer<typeof insertEmailIdentitySchema>;
+export type MagicLinkToken = typeof magicLinkTokens.$inferSelect;
+export type InsertMagicLinkToken = z.infer<typeof insertMagicLinkTokenSchema>;
+export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertOtpCode = z.infer<typeof insertOtpCodeSchema>;
 
 // API Requests/Responses
 export type StartNodeRequest = {

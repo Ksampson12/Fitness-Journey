@@ -33,12 +33,12 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-            <Button size="lg" className="text-lg h-16 px-10" asChild>
-              <a href="/api/login">
+            <Button size="lg" className="text-lg h-16 px-10" asChild data-testid="button-start-mission">
+              <a href="/login">
                 Start Mission <Play className="ml-2 w-5 h-5 fill-current" />
               </a>
             </Button>
-            <Button size="lg" variant="outline" className="text-lg h-16 px-10">
+            <Button size="lg" variant="outline" className="text-lg h-16 px-10" data-testid="button-demo">
               View Demo
             </Button>
           </div>

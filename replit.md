@@ -10,7 +10,8 @@ Key features:
 - AI-generated workout plans cached to reduce costs
 - Avatar evolution system with cosmetics
 - QuickFit mode for on-demand workout generation
-- Replit Auth integration for authentication
+- Dual authentication: Replit Auth and Email-based (magic link + OTP)
+- Push notifications for workout reminders and streak alerts
 
 ## User Preferences
 
@@ -61,9 +62,13 @@ Preferred communication style: Simple, everyday language.
 - connect-pg-simple for session storage
 
 ### Authentication
-- Replit Auth (OpenID Connect)
-- Passport.js with openid-client strategy
-- express-session for session management
+- **Dual Auth System**: Both Replit Auth and Email-based authentication
+- Replit Auth (OpenID Connect) via Passport.js with openid-client strategy
+- Email Auth: Magic link login + 30-day OTP re-verification
+- express-session for session management (PostgreSQL-backed)
+- **Email Service**: Resend for transactional emails (magic links, OTP codes)
+- **Email Auth Tables**: `email_identities`, `magic_link_tokens`, `otp_codes`
+- **Key Files**: `server/email-auth.ts`, `server/email.ts`, `client/src/pages/EmailLogin.tsx`
 
 ### AI Services
 - OpenAI API via Replit AI Integrations

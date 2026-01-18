@@ -1,10 +1,14 @@
 import { db } from "./db";
 import { 
   userProfiles, nodes, zones, workouts,
+  emailIdentities, magicLinkTokens, otpCodes,
   type UserProfile, type InsertUserProfile, 
-  type GameNode, type GameZone, type Workout, type InsertWorkout 
+  type GameNode, type GameZone, type Workout, type InsertWorkout,
+  type EmailIdentity, type InsertEmailIdentity,
+  type MagicLinkToken, type InsertMagicLinkToken,
+  type OtpCode, type InsertOtpCode
 } from "@shared/schema";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, gt, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User Profile
@@ -22,6 +26,20 @@ export interface IStorage {
   findActiveWorkout(userId: string, nodeId: string): Promise<Workout | undefined>;
   createWorkout(workout: InsertWorkout): Promise<Workout>;
   completeWorkout(id: number, metrics: any): Promise<Workout>;
+  
+  // Email Auth
+  getEmailIdentityByEmail(email: string): Promise<EmailIdentity | undefined>;
+  getEmailIdentityByUserId(userId: string): Promise<EmailIdentity | undefined>;
+  createEmailIdentity(identity: InsertEmailIdentity): Promise<EmailIdentity>;
+  updateEmailIdentity(email: string, updates: Partial<EmailIdentity>): Promise<EmailIdentity>;
+  
+  createMagicLinkToken(token: InsertMagicLinkToken): Promise<MagicLinkToken>;
+  getMagicLinkToken(token: string): Promise<MagicLinkToken | undefined>;
+  markMagicLinkUsed(token: string): Promise<void>;
+  
+  createOtpCode(otp: InsertOtpCode): Promise<OtpCode>;
+  getValidOtpCode(userId: string, code: string): Promise<OtpCode | undefined>;
+  markOtpUsed(id: number): Promise<void>;
   
   // Seed Helpers
   seedMapData(): Promise<void>;
@@ -191,6 +209,79 @@ export class DatabaseStorage implements IStorage {
         prerequisites: ["z2-n6"]
       }
     ]);
+  }
+
+  // Email Auth implementations
+  async getEmailIdentityByEmail(email: string): Promise<EmailIdentity | undefined> {
+    const [identity] = await db.select().from(emailIdentities).where(eq(emailIdentities.email, email.toLowerCase()));
+    return identity;
+  }
+
+  async getEmailIdentityByUserId(userId: string): Promise<EmailIdentity | undefined> {
+    const [identity] = await db.select().from(emailIdentities).where(eq(emailIdentities.userId, userId));
+    return identity;
+  }
+
+  async createEmailIdentity(identity: InsertEmailIdentity): Promise<EmailIdentity> {
+    const [newIdentity] = await db.insert(emailIdentities).values({
+      ...identity,
+      email: identity.email.toLowerCase(),
+    }).returning();
+    return newIdentity;
+  }
+
+  async updateEmailIdentity(email: string, updates: Partial<EmailIdentity>): Promise<EmailIdentity> {
+    const [updated] = await db.update(emailIdentities)
+      .set(updates)
+      .where(eq(emailIdentities.email, email.toLowerCase()))
+      .returning();
+    return updated;
+  }
+
+  async createMagicLinkToken(token: InsertMagicLinkToken): Promise<MagicLinkToken> {
+    const [newToken] = await db.insert(magicLinkTokens).values({
+      ...token,
+      email: token.email.toLowerCase(),
+    }).returning();
+    return newToken;
+  }
+
+  async getMagicLinkToken(token: string): Promise<MagicLinkToken | undefined> {
+    const [result] = await db.select().from(magicLinkTokens)
+      .where(and(
+        eq(magicLinkTokens.token, token),
+        isNull(magicLinkTokens.usedAt),
+        gt(magicLinkTokens.expiresAt, new Date())
+      ));
+    return result;
+  }
+
+  async markMagicLinkUsed(token: string): Promise<void> {
+    await db.update(magicLinkTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(magicLinkTokens.token, token));
+  }
+
+  async createOtpCode(otp: InsertOtpCode): Promise<OtpCode> {
+    const [newOtp] = await db.insert(otpCodes).values(otp).returning();
+    return newOtp;
+  }
+
+  async getValidOtpCode(userId: string, code: string): Promise<OtpCode | undefined> {
+    const [result] = await db.select().from(otpCodes)
+      .where(and(
+        eq(otpCodes.userId, userId),
+        eq(otpCodes.code, code),
+        isNull(otpCodes.usedAt),
+        gt(otpCodes.expiresAt, new Date())
+      ));
+    return result;
+  }
+
+  async markOtpUsed(id: number): Promise<void> {
+    await db.update(otpCodes)
+      .set({ usedAt: new Date() })
+      .where(eq(otpCodes.id, id));
   }
 }
 

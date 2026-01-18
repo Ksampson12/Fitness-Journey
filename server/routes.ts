@@ -6,6 +6,7 @@ import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
+import { registerEmailAuthRoutes } from "./email-auth";
 import OpenAI from "openai";
 import webpush from "web-push";
 
@@ -95,6 +96,7 @@ export async function registerRoutes(
   registerAuthRoutes(app);
   registerChatRoutes(app);
   registerImageRoutes(app);
+  registerEmailAuthRoutes(app);
 
   // Seed Map Data
   await storage.seedMapData();

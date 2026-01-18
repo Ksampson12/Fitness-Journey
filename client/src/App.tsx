@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserProfile } from "@/hooks/use-user";
+import { ReverificationDialog } from "@/components/ReverificationDialog";
 
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
@@ -13,6 +14,7 @@ import Goals from "@/pages/Goals";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import PlanReveal from "@/pages/PlanReveal";
+import EmailLogin from "@/pages/EmailLogin";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -50,6 +52,9 @@ function Router() {
       <Route path="/landing">
         {isAuthenticated ? <Redirect to="/" /> : <Landing />}
       </Route>
+      <Route path="/login">
+        {isAuthenticated ? <Redirect to="/" /> : <EmailLogin />}
+      </Route>
       
       {/* Protected Routes */}
       <Route path="/">
@@ -80,11 +85,26 @@ function Router() {
   );
 }
 
+function ReverificationWrapper({ children }: { children: React.ReactNode }) {
+  const { needsReverification, email, authSource } = useAuth();
+  
+  return (
+    <>
+      {children}
+      {authSource === "email" && needsReverification && (
+        <ReverificationDialog open={true} email={email} />
+      )}
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
-      <Router />
+      <ReverificationWrapper>
+        <Router />
+      </ReverificationWrapper>
     </QueryClientProvider>
   );
 }
