@@ -143,7 +143,7 @@ export function registerEmailAuthRoutes(app: Express) {
         });
       }
       
-      // Generate JWT tokens
+      // Generate JWT tokens immediately (no verification needed)
       const tokens = generateJwtTokens(identity.userId);
       
       // For mobile: Redirect with tokens in query (deep link)
@@ -263,18 +263,11 @@ export function registerEmailAuthRoutes(app: Express) {
         if (decoded && decoded.type === 'access') {
           const identity = await storage.getEmailIdentityByUserId(decoded.userId);
           if (identity) {
-            // Check if re-verification is needed (30 days)
-            let needsReverification = false;
-            if (identity.lastVerifiedAt) {
-              const daysSinceVerification = (Date.now() - identity.lastVerifiedAt.getTime()) / (1000 * 60 * 60 * 24);
-              needsReverification = daysSinceVerification >= REVERIFICATION_DAYS;
-            }
-            
             return res.json({
               authenticated: true,
               email: identity.email,
               userId: identity.userId,
-              needsReverification,
+              needsReverification: false, // Always false now
             });
           }
         }

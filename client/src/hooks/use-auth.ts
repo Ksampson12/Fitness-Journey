@@ -90,7 +90,7 @@ async function fetchAuthState(): Promise<AuthState> {
           source: "jwt",
           userId: user.id,
           email: user.email,
-          needsReverification: !user.emailVerified,
+          needsReverification: false, // Always false now
         };
       }
     } catch (error) {
@@ -120,7 +120,7 @@ async function fetchAuthState(): Promise<AuthState> {
                 source: "jwt",
                 userId: user.id,
                 email: user.email,
-                needsReverification: !user.emailVerified,
+                needsReverification: false, // Always false now
               };
             }
           }
