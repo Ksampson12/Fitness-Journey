@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserProfile } from "@/hooks/use-user";
-import { ReverificationDialog } from "@/components/ReverificationDialog";
 
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
@@ -86,16 +85,8 @@ function Router() {
 }
 
 function ReverificationWrapper({ children }: { children: React.ReactNode }) {
-  const { needsReverification, email, authSource } = useAuth();
-  
-  return (
-    <>
-      {children}
-      {authSource === "email" && needsReverification && (
-        <ReverificationDialog open={true} email={email} />
-      )}
-    </>
-  );
+  // Always show children - no verification needed
+  return <>{children}</>;
 }
 
 function App() {
