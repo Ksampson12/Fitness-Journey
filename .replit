@@ -11,6 +11,9 @@ externalPort = 80
 
 [env]
 PORT = "5000"
+JWT_SECRET = "your-super-secret-jwt-key-change-this-in-production"
+JWT_EXPIRES_IN = "1h"
+REFRESH_TOKEN_EXPIRES_IN = "7d"
 
 [deployment]
 deploymentTarget = "autoscale"

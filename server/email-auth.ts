@@ -1,6 +1,7 @@
 import { Express, Request, Response } from "express";
 import { z } from "zod";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { sendMagicLink, sendOtpCode } from "./email";
 
@@ -18,6 +19,31 @@ function generateOtp(): string {
 
 function generateUserId(): string {
   return `email_${crypto.randomUUID()}`;
+}
+
+// JWT Helper Functions
+function generateJwtTokens(userId: string) {
+  const accessToken = jwt.sign(
+    { userId, type: 'access' },
+    process.env.JWT_SECRET!,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+  );
+  
+  const refreshToken = jwt.sign(
+    { userId, type: 'refresh' },
+    process.env.JWT_SECRET!,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' }
+  );
+  
+  return { accessToken, refreshToken };
+}
+
+function verifyJwtToken(token: string) {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!);
+  } catch (error) {
+    return null;
+  }
 }
 
 const requestMagicLinkSchema = z.object({
@@ -117,13 +143,16 @@ export function registerEmailAuthRoutes(app: Express) {
         });
       }
       
-      // Set session
-      (req.session as any).userId = identity.userId;
-      (req.session as any).email = identity.email;
-      (req.session as any).lastVerifiedAt = new Date().toISOString();
+      // Generate JWT tokens
+      const tokens = generateJwtTokens(identity.userId);
       
-      // Redirect to app
-      res.redirect("/");
+      // For mobile: Redirect with tokens in query (deep link)
+      if (req.query.mobile === 'true') {
+        res.redirect(`yourapp://auth/success?token=${tokens.accessToken}&refresh=${tokens.refreshToken}`);
+      } else {
+        // Web: Redirect to app with tokens in URL for client to store
+        res.redirect(`/?token=${tokens.accessToken}&refresh=${tokens.refreshToken}`);
+      }
     } catch (error) {
       console.error("Verify magic link error:", error);
       res.redirect("/?error=verification_failed");
@@ -133,10 +162,18 @@ export function registerEmailAuthRoutes(app: Express) {
   // Request OTP for 30-day re-verification
   app.post("/api/auth/email/request-otp", async (req: Request, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+      // Get userId from JWT token
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ message: "No token provided" });
       }
+      
+      const decoded = verifyJwtToken(authHeader.substring(7)) as any;
+      if (!decoded || decoded.type !== 'access') {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      const userId = decoded.userId;
       
       const identity = await storage.getEmailIdentityByUserId(userId);
       if (!identity) {
@@ -173,10 +210,18 @@ export function registerEmailAuthRoutes(app: Express) {
   // Verify OTP
   app.post("/api/auth/email/verify-otp", async (req: Request, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+      // Get userId from JWT token
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ message: "No token provided" });
       }
+      
+      const decoded = verifyJwtToken(authHeader.substring(7)) as any;
+      if (!decoded || decoded.type !== 'access') {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      const userId = decoded.userId;
       
       const { code } = verifyOtpSchema.parse(req.body);
       
@@ -197,9 +242,6 @@ export function registerEmailAuthRoutes(app: Express) {
         });
       }
       
-      // Update session
-      (req.session as any).lastVerifiedAt = new Date().toISOString();
-      
       res.json({ success: true });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -213,30 +255,34 @@ export function registerEmailAuthRoutes(app: Express) {
   // Get current email auth status
   app.get("/api/auth/email/status", async (req: Request, res: Response) => {
     try {
-      const userId = (req.session as any)?.userId;
-      const email = (req.session as any)?.email;
-      const lastVerifiedAt = (req.session as any)?.lastVerifiedAt;
+      // Try to get user from JWT token
+      const authHeader = req.headers.authorization;
       
-      if (!userId || !email) {
-        return res.json({ 
-          authenticated: false,
-          needsReverification: false 
-        });
+      if (authHeader?.startsWith('Bearer ')) {
+        const decoded = verifyJwtToken(authHeader.substring(7)) as any;
+        if (decoded && decoded.type === 'access') {
+          const identity = await storage.getEmailIdentityByUserId(decoded.userId);
+          if (identity) {
+            // Check if re-verification is needed (30 days)
+            let needsReverification = false;
+            if (identity.lastVerifiedAt) {
+              const daysSinceVerification = (Date.now() - identity.lastVerifiedAt.getTime()) / (1000 * 60 * 60 * 24);
+              needsReverification = daysSinceVerification >= REVERIFICATION_DAYS;
+            }
+            
+            return res.json({
+              authenticated: true,
+              email: identity.email,
+              userId: identity.userId,
+              needsReverification,
+            });
+          }
+        }
       }
       
-      // Check if re-verification is needed (30 days)
-      let needsReverification = false;
-      if (lastVerifiedAt) {
-        const verifiedDate = new Date(lastVerifiedAt);
-        const daysSinceVerification = (Date.now() - verifiedDate.getTime()) / (1000 * 60 * 60 * 24);
-        needsReverification = daysSinceVerification >= REVERIFICATION_DAYS;
-      }
-      
-      res.json({
-        authenticated: true,
-        email,
-        userId,
-        needsReverification,
+      res.json({ 
+        authenticated: false,
+        needsReverification: false 
       });
     } catch (error) {
       console.error("Auth status error:", error);
@@ -244,15 +290,35 @@ export function registerEmailAuthRoutes(app: Express) {
     }
   });
 
-  // Email auth logout
+  // Email auth logout (JWT version - client just removes tokens)
   app.post("/api/auth/email/logout", (req: Request, res: Response) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-        return res.status(500).json({ message: "Failed to logout" });
+    // For JWT, the client handles logout by removing tokens
+    // Server could maintain a blacklist if needed, but for now just confirm
+    res.json({ success: true });
+  });
+
+  // Refresh JWT tokens
+  app.post("/api/auth/refresh", async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(401).json({ message: "No refresh token provided" });
       }
-      res.json({ success: true });
-    });
+      
+      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!) as any;
+      
+      if (decoded.type !== 'refresh') {
+        return res.status(401).json({ message: "Invalid refresh token" });
+      }
+      
+      // Generate new tokens
+      const tokens = generateJwtTokens(decoded.userId);
+      
+      res.json(tokens);
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
   });
 }
 

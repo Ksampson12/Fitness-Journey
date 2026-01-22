@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import { registerEmailAuthRoutes } from "./email-auth";
 import OpenAI from "openai";
+import jwt from "jsonwebtoken";
 import webpush from "web-push";
 
 const openai = new OpenAI({
@@ -25,6 +26,15 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY
   );
+}
+
+// JWT Helper Functions
+function verifyJwtToken(token: string) {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!);
+  } catch (error) {
+    return null;
+  }
 }
 
 function calculateStreak(
@@ -101,17 +111,73 @@ export async function registerRoutes(
   // Seed Map Data
   await storage.seedMapData();
 
-  // Middleware to check auth for game routes
-  const requireAuth = (req: any, res: any, next: any) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
+  // JWT Auth Middleware (supports multiple auth methods)
+const requireAuth = (req: any, res: any, next: any) => {
+  // Try JWT from Authorization header first (mobile/API)
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const decoded = verifyJwtToken(authHeader.substring(7));
+    if (decoded && (decoded as any).type === 'access') {
+      req.userId = (decoded as any).userId;
+      req.authSource = "jwt";
+      return next();
     }
-    next();
-  };
+  }
+  
+  // Try JWT from cookie (web)
+  const tokenFromCookie = req.cookies?.accessToken;
+  if (tokenFromCookie) {
+    const decoded = verifyJwtToken(tokenFromCookie);
+    if (decoded && (decoded as any).type === 'access') {
+      req.userId = (decoded as any).userId;
+      req.authSource = "jwt";
+      return next();
+    }
+  }
+  
+  // Try JWT from query params (initial login redirect)
+  const tokenFromQuery = req.query.token as string;
+  if (tokenFromQuery) {
+    const decoded = verifyJwtToken(tokenFromQuery);
+    if (decoded && (decoded as any).type === 'access') {
+      req.userId = (decoded as any).userId;
+      req.authSource = "jwt";
+      return next();
+    }
+  }
+  
+  // Fallback to Replit Auth for existing users
+  if (req.isAuthenticated() && req.user?.claims?.sub) {
+    req.userId = req.user.claims.sub;
+    req.authSource = "replit";
+    return next();
+  }
+  
+  return res.status(401).json({ message: "Unauthorized" });
+};
 
   // === User Routes ===
+  // Get current user info
+  app.get("/api/auth/me", requireAuth, async (req: any, res) => {
+    const userId = req.userId;
+    
+    // Try to get from email identities first
+    let identity = await storage.getEmailIdentityByUserId(userId);
+    if (identity) {
+      return res.json({
+        id: userId,
+        email: identity.email,
+        emailVerified: identity.emailVerified,
+        authSource: "email"
+      });
+    }
+    
+    // Fallback for Replit users (you'd need to add this logic)
+    res.status(404).json({ message: "User not found" });
+  });
+
   app.get(api.user.getProfile.path, requireAuth, async (req: any, res) => {
-    const profile = await storage.getUserProfile(req.user.claims.sub);
+    const profile = await storage.getUserProfile(req.userId);
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
     }
@@ -121,7 +187,7 @@ export async function registerRoutes(
   app.post(api.user.updateOnboarding.path, requireAuth, async (req: any, res) => {
     try {
       const input = api.user.updateOnboarding.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       let profile = await storage.getUserProfile(userId);
       
@@ -247,7 +313,7 @@ export async function registerRoutes(
   app.patch(api.user.updateProfile.path, requireAuth, async (req: any, res) => {
     try {
       const input = api.user.updateProfile.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       const profile = await storage.updateUserProfile(userId, input);
       res.json(profile);
@@ -261,7 +327,7 @@ export async function registerRoutes(
 
   app.delete(api.user.resetProfile.path, requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       await storage.deleteUserProfile(userId);
       res.json({ success: true });
     } catch (err) {
@@ -281,7 +347,7 @@ export async function registerRoutes(
   app.post(api.game.startNode.path, requireAuth, async (req: any, res) => {
     try {
       const { nodeId } = api.game.startNode.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
 
       const profile = await storage.getUserProfile(userId);
       if (!profile || !profile.unlockedNodeIds.includes(nodeId)) {
@@ -384,7 +450,7 @@ export async function registerRoutes(
   app.post(api.game.completeNode.path, requireAuth, async (req: any, res) => {
     try {
       const { workoutId, metrics } = api.game.completeNode.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
 
       const workout = await storage.getWorkout(workoutId);
       if (!workout || workout.userId !== userId) {
@@ -451,7 +517,7 @@ export async function registerRoutes(
   app.post(api.game.quickFit.path, requireAuth, async (req: any, res) => {
     try {
       const { duration, focus, intensity, mood } = api.game.quickFit.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const profile = await storage.getUserProfile(userId);
 
       let workoutJson = {
@@ -528,7 +594,7 @@ export async function registerRoutes(
 
   app.post("/api/notifications/subscribe", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       const parseResult = subscriptionSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -555,7 +621,7 @@ export async function registerRoutes(
   // Unsubscribe from push notifications
   app.post("/api/notifications/unsubscribe", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
 
       const profile = await storage.getUserProfile(userId);
       if (!profile) {
@@ -583,7 +649,7 @@ export async function registerRoutes(
 
   app.patch("/api/notifications/preferences", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       
       const parseResult = preferencesSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -615,7 +681,7 @@ export async function registerRoutes(
   // Test notification (for development)
   app.post("/api/notifications/test", requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.userId;
       const profile = await storage.getUserProfile(userId);
 
       if (!profile?.pushSubscription || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
