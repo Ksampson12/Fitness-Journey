@@ -1,12 +1,14 @@
 import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { api, errorSchemas } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import { registerEmailAuthRoutes } from "./email-auth";
+import { userProfiles } from "@shared/schema";
 import OpenAI from "openai";
 import webpush from "web-push";
 
@@ -116,13 +118,10 @@ export async function registerRoutes(
 
   app.post(api.user.updateOnboarding.path, async (req: any, res) => {
     try {
-      console.log("[Onboarding] Request received:", req.body);
       const input = api.user.updateOnboarding.input.parse(req.body);
       const userId = "test-user"; // Hardcoded for now
       
-      console.log("[Onboarding] Looking for profile for userId:", userId);
       let profile = await storage.getUserProfile(userId);
-      console.log("[Onboarding] Existing profile:", profile);
       
       const initialNodes = ["z1-n1"]; // Unlock first node
       
@@ -130,14 +129,35 @@ export async function registerRoutes(
       let weeklyPlan = null;
       try {
         if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-           const systemPrompt = `You are an expert personal trainer. Create a DETAILED 7-day weekly workout plan for a new client.
-           Client: ${input.displayName}, Level: ${input.fitnessLevel}, Goal: ${input.goals.join(', ')}.
-           Equipment: ${input.equipment.join(', ')}. Activities: ${input.activities.join(', ')}.
+           const systemPrompt = `You are an expert personal trainer creating a FULLY CUSTOMIZED 7-day workout plan.
+           CLIENT PROFILE:
+           • Name: ${input.displayName}
+           • Age Range: ${input.ageRange || 'Not specified'}
+           • Fitness Level: ${input.fitnessLevel}
+           • Training Experience: ${input.trainingExperience || 'Not specified'}
+           • Primary Goal: ${input.primaryGoal}
+           • Secondary Goal: ${input.secondaryGoal || 'None'}
+           • Target Areas: ${input.targetAreas.join(', ') || 'Full body'}
+           • Workout Schedule: ${input.workoutDaysPerWeek} days/week, ${input.preferredWorkoutLength} sessions
+           • Best Time: ${input.bestTimeOfDay}
+           • Location: ${input.workoutLocation}
+           • Available Equipment: ${input.equipment.join(', ') || 'Bodyweight only'}
+           • Injuries/Limitations: ${input.injuriesOrLimitations === 'yes' ? input.injuriesOrLimitations : 'None'}
+           • Movements to Avoid: ${input.movementsToAvoid.join(', ') || 'None'}
+           • Preferred Style: ${input.workoutStyle}
+           • Intensity Preference: ${input.intensityPreference}
            
-           You must generate the specific exercises for EACH workout day.
-           The 'explanation' should briefly explain how this specific plan was tailored to their goals (e.g. "Because you chose Strength and have Dumbbells, we focused on...").
+           CRITICAL REQUIREMENTS:
+           1. Create a plan that matches their EXACT goals and fitness level
+           2. Use ONLY their available equipment
+           3. Respect all injuries and movement limitations
+           4. Match their preferred workout style and intensity
+           5. Schedule exactly ${input.workoutDaysPerWeek} workout days
+           6. Each workout should be ${input.preferredWorkoutLength}
+           7. Focus on their target areas
+           8. Consider their age range for exercise selection and recovery
            
-           Response JSON format: { 
+           Response format: { 
              schedule: { 
                day: string, 
                focus: string, 
@@ -209,18 +229,14 @@ export async function registerRoutes(
       // Each node draws from this blueprint based on its position in the user's journey
       // Node 0 -> Day 0, Node 1 -> Day 1, ..., Node 7 -> Day 0 (cycling), etc.
       // This allows infinite map growth while maintaining personalized workouts
-      console.log("[Onboarding] Weekly plan created as reusable blueprint for journey progression");
 
       if (profile) {
-        console.log("[Onboarding] Updating existing profile");
         profile = await storage.updateUserProfile(userId, {
           ...input,
           weeklyPlan,
           unlockedNodeIds: profile.unlockedNodeIds.length ? profile.unlockedNodeIds : initialNodes
         });
-        console.log("[Onboarding] Profile updated:", profile);
       } else {
-        console.log("[Onboarding] Creating new profile");
         profile = await storage.createUserProfile({
           userId,
           ...input,
@@ -235,14 +251,7 @@ export async function registerRoutes(
           evolutionStage: 1,
           equippedItems: [],
         });
-        console.log("[Onboarding] Profile created:", profile);
       }
-      
-      console.log("[Onboarding] Final profile to return:", profile);
-      
-      // Verify the profile was actually saved
-      const verifyProfile = await storage.getUserProfile(userId);
-      console.log("[Onboarding] Verification - profile in DB after save:", verifyProfile);
       
       res.json(profile);
     } catch (err) {
@@ -274,8 +283,27 @@ export async function registerRoutes(
       await storage.deleteUserProfile(userId);
       res.json({ success: true });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Internal server error" });
+      throw err;
+    }
+  });
+
+  // Admin routes
+  app.get('/api/admin/users', async (req: any, res) => {
+    try {
+      const users = await db.select({
+        id: userProfiles.id,
+        userId: userProfiles.userId,
+        displayName: userProfiles.displayName,
+        fitnessLevel: userProfiles.fitnessLevel,
+        xp: userProfiles.xp,
+        coins: userProfiles.coins,
+        streak: userProfiles.streak,
+        createdAt: userProfiles.createdAt
+      }).from(userProfiles).orderBy(userProfiles.id);
+      
+      res.json(users);
+    } catch (err) {
+      throw err;
     }
   });
 

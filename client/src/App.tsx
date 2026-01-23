@@ -14,6 +14,7 @@ import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import PlanReveal from "@/pages/PlanReveal";
 import EmailLogin from "@/pages/EmailLogin";
+import Admin from "@/admin";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -76,6 +77,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         <ProtectedRoute component={Settings} />
+      </Route>
+      <Route path="/admin">
+        <Admin />
       </Route>
       
       {/* 404 */}

@@ -36,6 +36,21 @@ export const userProfiles = pgTable("user_profiles", {
   goals: text("goals").array().default([]), // strength, cardio, flexibility
   activities: text("activities").array().default([]), // running, swimming, weightlifting, etc
   
+  // Enhanced Profile Data
+  ageRange: text("age_range"), // under-18, 18-24, 25-34, 35-44, 45-54, 55+
+  trainingExperience: text("training_experience"), // never, some, 1-3-years, 3-plus-years
+  primaryGoal: text("primary_goal"), // fat-loss, muscle-building, strength, endurance, mobility, general-health
+  secondaryGoal: text("secondary_goal"), // posture, core-strength, athletic-performance, stress-reduction
+  targetAreas: text("target_areas").array().default([]), // full-body, upper-body, lower-body, core, glutes, arms, back
+  workoutDaysPerWeek: integer("workout_days_per_week"), // 1-2, 3, 4, 5-plus
+  preferredWorkoutLength: text("preferred_workout_length"), // 15-20-min, 30-min, 45-min, 60-min
+  bestTimeOfDay: text("best_time_of_day"), // morning, afternoon, evening, varies
+  workoutLocation: text("workout_location"), // home, gym, both
+  injuriesOrLimitations: text("injuries_or_limitations"), // no, or description
+  movementsToAvoid: text("movements_to_avoid").array().default([]), // squats, lunges, overhead-pressing, running, jumping
+  workoutStyle: text("workout_style"), // strength, hiit, circuits, cardio, yoga, mixed
+  intensityPreference: text("intensity_preference"), // low-steady, moderate, push-hard
+  
   weeklyPlan: jsonb("weekly_plan"), // Stores AI generated weekly schedule and motivation
   nodeScheduleMap: jsonb("node_schedule_map"), // Maps nodeId -> scheduleIndex for explicit workout assignment
   
@@ -135,6 +150,26 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
   id: true, 
   createdAt: true, 
   updatedAt: true 
+}).extend({
+  // Enhanced validation for onboarding
+  displayName: z.string().min(1, "Name is required").max(50, "Name too long"),
+  fitnessLevel: z.enum(["beginner", "intermediate", "advanced"]),
+  primaryGoal: z.enum(["fat-loss", "muscle-building", "strength", "endurance", "mobility", "general-health"]),
+  secondaryGoal: z.enum(["posture", "core-strength", "athletic-performance", "stress-reduction", ""]).optional(),
+  ageRange: z.enum(["under-18", "18-24", "25-34", "35-44", "45-54", "55+"]).optional(),
+  trainingExperience: z.enum(["never", "some", "1-3-years", "3-plus-years"]).optional(),
+  targetAreas: z.array(z.enum(["full-body", "upper-body", "lower-body", "core", "glutes", "arms", "back"])).default([]),
+  workoutDaysPerWeek: z.number().min(1).max(7),
+  preferredWorkoutLength: z.enum(["15-20-min", "30-min", "45-min", "60-min"]),
+  bestTimeOfDay: z.enum(["morning", "afternoon", "evening", "varies"]),
+  workoutLocation: z.enum(["home", "gym", "both"]),
+  injuriesOrLimitations: z.string().optional(),
+  movementsToAvoid: z.array(z.enum(["squats", "lunges", "overhead-pressing", "running", "jumping"])).default([]),
+  workoutStyle: z.enum(["strength", "hiit", "circuits", "cardio", "yoga", "mixed"]),
+  intensityPreference: z.enum(["low-steady", "moderate", "push-hard"]),
+  equipment: z.array(z.enum(["bodyweight", "dumbbells", "barbell", "resistance-bands", "kettlebells", "machines", "cardio-equipment"])).default([]),
+  goals: z.array(z.string()).default([]),
+  activities: z.array(z.string()).default([]),
 });
 
 export const insertWorkoutSchema = createInsertSchema(workouts).omit({ 
