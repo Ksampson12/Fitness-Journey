@@ -46,9 +46,11 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
 
   const handleNext = () => {
+    console.log("handleNext called, currentStep:", currentStep, "steps.length:", steps.length);
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
+      console.log("Calling handleSubmit from handleNext");
       handleSubmit();
     }
   };
@@ -61,6 +63,8 @@ export default function Onboarding() {
 
   const handleSubmit = async () => {
     try {
+      console.log("Submitting onboarding with data:", formData);
+      
       const submissionData: any = {
         displayName: formData.displayName,
         fitnessLevel: formData.fitnessLevel,
@@ -85,10 +89,12 @@ export default function Onboarding() {
       if (formData.workoutStyle) submissionData.workoutStyle = formData.workoutStyle;
       if (formData.intensityPreference) submissionData.intensityPreference = formData.intensityPreference;
 
+      console.log("Final submission data:", submissionData);
       await updateOnboarding.mutateAsync(submissionData);
       // Redirect to the plan reveal page instead of home
       setLocation("/plan-reveal");
     } catch (error) {
+      console.error("Submission error:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to save profile." });
     }
   };
@@ -707,7 +713,10 @@ export default function Onboarding() {
             </Button>
           )}
           <Button 
-            onClick={handleNext}
+            onClick={() => {
+              console.log("Button clicked! currentStep:", currentStep, "isPending:", updateOnboarding.isPending);
+              handleNext();
+            }}
             className="px-8"
             disabled={
               (currentStep === 0 && formData.displayName.length === 0) ||
