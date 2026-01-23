@@ -7,11 +7,23 @@ A Duolingo-style gamified fitness mobile application where users follow a Journe
 Key features:
 - Journey Map with unlockable nodes and zones
 - XP, coins, streaks, and level progression
-- AI-generated workout plans cached to reduce costs
+- AI-generated 7-day weekly plans with workout AND rest days
+- Full rest day support with special purple-themed UI in WorkoutPlayer
 - Avatar evolution system with cosmetics
 - QuickFit mode for on-demand workout generation
 - Dual authentication: Replit Auth and Email-based (magic link + OTP)
 - Push notifications for workout reminders and streak alerts
+
+## Weekly Schedule System
+
+The AI generates a full 7-day weekly schedule that includes both workout days and rest/recovery days:
+- **Workout days**: Include exercises, duration, and focus area
+- **Rest days**: Include motivational messaging, special Moon-themed purple UI in WorkoutPlayer
+- Map nodes cycle through ALL 7 days (workout + rest), not just workout days
+- Rest day detection: empty exercises array OR focus/notes contains "rest"/"recovery"/"off"
+- Completing rest days marks node as complete and contributes to streak maintenance
+- Streak calculation respects rest days - won't break streak for scheduled rest
+- **Note**: Existing users with old 4-day plans will need to regenerate their plan to get the 7-day schedule
 
 ## User Preferences
 

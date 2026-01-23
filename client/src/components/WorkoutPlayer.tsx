@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, Timer, Dumbbell, X, ArrowRight, Sparkles, RotateCcw } from "lucide-react";
+import { CheckCircle, Timer, Dumbbell, X, ArrowRight, Sparkles, RotateCcw, Moon, Heart } from "lucide-react";
 import { useCompleteNode } from "@/hooks/use-game";
 
 type WorkoutPlayerProps = {
@@ -331,6 +331,55 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
              </div>
 
              <Button onClick={handleClose} size="lg" className="w-full" data-testid="button-return-map">Return to Map</Button>
+          </div>
+        ) : workout?.isRestDay ? (
+          /* REST DAY SPECIAL UI */
+          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="w-24 h-24 rounded-full bg-purple-500/20 flex items-center justify-center"
+            >
+              <Moon className="w-12 h-12 text-purple-400" />
+            </motion.div>
+            
+            <div>
+              <h2 className="text-2xl font-display text-purple-400 mb-2 uppercase tracking-wide">{workout?.title || "Rest Day"}</h2>
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-sm">
+                {workout?.restMessage || "Your body recovers and grows stronger during rest. Take it easy today!"}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-purple-400/70">
+              <Heart className="w-5 h-5" />
+              <span className="text-sm font-medium">Recovery Mode Active</span>
+            </div>
+
+            {workout?.notes && (
+              <div className="bg-card/50 rounded-xl p-4 border border-white/5 max-w-sm">
+                <p className="text-sm text-muted-foreground">{workout.notes}</p>
+              </div>
+            )}
+
+            <Button 
+              onClick={handleFinish} 
+              size="lg" 
+              className="w-full max-w-xs"
+              disabled={completeMutation.isPending}
+              data-testid="button-complete-rest-day"
+            >
+              {completeMutation.isPending ? "Completing..." : "Complete Rest Day"}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              onClick={handleClose} 
+              className="text-muted-foreground"
+              data-testid="button-close-rest-day"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Close
+            </Button>
           </div>
         ) : (
           <>

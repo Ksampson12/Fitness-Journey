@@ -168,7 +168,7 @@ export async function registerRoutes(
              workoutDaysPerWeek: input.workoutDaysPerWeek
            });
            
-           const systemPrompt = `You are an expert personal trainer creating a FULLY CUSTOMIZED 7-day workout plan.
+           const systemPrompt = `You are an expert personal trainer creating a FULLY CUSTOMIZED 7-day weekly plan.
            CLIENT PROFILE:
            • Name: ${input.displayName}
            • Age Range: ${input.ageRange || 'Not specified'}
@@ -177,7 +177,7 @@ export async function registerRoutes(
            • Primary Goal: ${input.primaryGoal}
            • Secondary Goal: ${input.secondaryGoal || 'None'}
            • Target Areas: ${input.targetAreas.join(', ') || 'Full body'}
-           • Workout Schedule: ${input.workoutDaysPerWeek} days/week, ${input.preferredWorkoutLength} sessions
+           • Workout Schedule: ${input.workoutDaysPerWeek} workout days/week, ${input.preferredWorkoutLength} sessions
            • Best Time: ${input.bestTimeOfDay}
            • Location: ${input.workoutLocation}
            • Available Equipment: ${input.equipment.join(', ') || 'Bodyweight only'}
@@ -187,27 +187,33 @@ export async function registerRoutes(
            • Intensity Preference: ${input.intensityPreference}
            
            CRITICAL REQUIREMENTS:
-           1. Create a plan that matches their EXACT goals and fitness level
-           2. Use ONLY their available equipment
-           3. Respect all injuries and movement limitations
-           4. Match their preferred workout style and intensity
-           5. Schedule exactly ${input.workoutDaysPerWeek} workout days
-           6. Each workout should be ${input.preferredWorkoutLength}
-           7. Focus on their target areas
-           8. Consider their age range for exercise selection and recovery
+           1. Create a FULL 7-DAY schedule (Monday through Sunday)
+           2. Include exactly ${input.workoutDaysPerWeek} WORKOUT days with exercises
+           3. The remaining ${7 - input.workoutDaysPerWeek} days should be REST/RECOVERY days (with focus like "Rest & Recovery", "Active Recovery", or "Rest Day" and empty exercises array)
+           4. Use ONLY their available equipment
+           5. Respect all injuries and movement limitations
+           6. Match their preferred workout style and intensity
+           7. Each workout should be ${input.preferredWorkoutLength}
+           8. Focus on their target areas
+           9. Consider their age range for exercise selection and recovery
+           10. Space out workout days appropriately for recovery (e.g., don't do 4 days in a row)
            
            Response format: { 
-             schedule: { 
-               day: string, 
-               focus: string, 
-               duration: string, 
-               notes: string,
-               exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[]
-             }[], 
+             schedule: [
+               { day: "Monday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Tuesday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Wednesday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Thursday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Friday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Saturday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Sunday", focus: string, duration: string, notes: string, exercises: [...] }
+             ],
              motivation: string,
              trainerNote: string,
              explanation: string
-           }`;
+           }
+           
+           For REST days: set focus to "Rest & Recovery" or "Active Recovery", duration to "Rest", and exercises to empty array [].`;
            
            const completion = await openai.chat.completions.create({
              model: "gpt-5.1",
@@ -226,7 +232,7 @@ export async function registerRoutes(
         }
       } catch (e) {
         console.error("AI Plan Generation failed", e);
-        // Fallback plan
+        // Fallback plan - full 7-day schedule with 3 workout days and 4 rest days
         weeklyPlan = {
           schedule: [
             { 
@@ -240,6 +246,13 @@ export async function registerRoutes(
               ]
             },
             { 
+              day: "Tuesday", 
+              focus: "Rest & Recovery", 
+              duration: "Rest", 
+              notes: "Let your muscles recover and rebuild",
+              exercises: []
+            },
+            { 
               day: "Wednesday", 
               focus: "Cardio & Core", 
               duration: "30m", 
@@ -250,6 +263,13 @@ export async function registerRoutes(
               ]
             },
             { 
+              day: "Thursday", 
+              focus: "Active Recovery", 
+              duration: "Rest", 
+              notes: "Light stretching or walking encouraged",
+              exercises: []
+            },
+            { 
               day: "Friday", 
               focus: "Strength & Power", 
               duration: "45m", 
@@ -258,11 +278,25 @@ export async function registerRoutes(
                 { name: "Squats", duration: null, reps: "15", sets: 3 },
                 { name: "Lunges", duration: null, reps: "12", sets: 3 }
               ]
+            },
+            { 
+              day: "Saturday", 
+              focus: "Rest & Recovery", 
+              duration: "Rest", 
+              notes: "Enjoy your weekend rest",
+              exercises: []
+            },
+            { 
+              day: "Sunday", 
+              focus: "Rest Day", 
+              duration: "Rest", 
+              notes: "Recharge for the week ahead",
+              exercises: []
             }
           ],
           motivation: "Consistency is key. Trust the process and you will see results.",
           trainerNote: "Let's get to work!",
-          explanation: "We built this foundation phase to get you moving."
+          explanation: "We built this foundation phase to get you moving with proper rest days for recovery."
         };
       }
 
@@ -416,21 +450,13 @@ export async function registerRoutes(
            const plan = profile.weeklyPlan as any;
            const schedule = plan.schedule || [];
            
-           // Get workout days (days with exercises)
-           const workoutDays: { day: any, originalIndex: number }[] = [];
-           schedule.forEach((day: any, index: number) => {
-             if (day.exercises && day.exercises.length > 0) {
-               workoutDays.push({ day, originalIndex: index });
-             }
-           });
-           
-           if (workoutDays.length > 0) {
+           if (schedule.length > 0) {
              // Sort all nodes globally to find this node's position
              const allZones = await storage.getMapZones();
              const zoneOrderMap = new Map(allZones.map((z: any) => [z.id, z.orderIndex]));
              
              const sortedNodes = [...allNodes]
-               .filter((n: any) => n.type === "workout" || n.type === "boss")
+               .filter((n: any) => n.type === "workout" || n.type === "boss" || n.type === "recovery")
                .sort((a: any, b: any) => {
                  const zoneOrderA = zoneOrderMap.get(a.zoneId) ?? 0;
                  const zoneOrderB = zoneOrderMap.get(b.zoneId) ?? 0;
@@ -441,22 +467,51 @@ export async function registerRoutes(
              // Find this node's global position
              const globalNodeIndex = sortedNodes.findIndex(n => n.id === nodeId);
              
-             // Cycle through workout days based on node position
-             // This creates a weekly rhythm that repeats as the user progresses
-             const dayPosition = globalNodeIndex % workoutDays.length;
-             const selectedDay = workoutDays[dayPosition];
-             scheduleIndex = selectedDay.originalIndex;
+             // Cycle through ALL schedule days (including rest days) based on node position
+             const dayPosition = globalNodeIndex % schedule.length;
+             const selectedDay = schedule[dayPosition];
+             scheduleIndex = dayPosition;
              
-             workoutJson = {
-               title: `${selectedDay.day.day}: ${selectedDay.day.focus}`,
-               exercises: selectedDay.day.exercises,
-               duration: selectedDay.day.duration,
-               notes: selectedDay.day.notes
-             };
+             // Check if this is a rest day (no exercises, or focus/notes indicate rest/recovery)
+             const hasExercises = selectedDay.exercises && selectedDay.exercises.length > 0;
+             const focusText = selectedDay.focus?.toLowerCase() || '';
+             const notesText = selectedDay.notes?.toLowerCase() || '';
+             const isRestIndicator = focusText.includes('rest') || focusText.includes('recovery') || focusText.includes('off') ||
+                                     notesText.includes('rest day') || notesText.includes('recovery day');
+             const isRestDay = !hasExercises || isRestIndicator;
              
-             console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> Week Day ${dayPosition + 1}: ${selectedDay.day.day}`);
+             if (isRestDay) {
+               // Create a rest day "workout" with positive messaging
+               const restMessages = [
+                 "Your muscles grow while you rest. Take this time to recover and come back stronger!",
+                 "Rest is part of the journey. Your body is rebuilding and getting stronger right now.",
+                 "Champions know when to rest. You've earned this recovery time!",
+                 "Active recovery day! Light stretching, walking, or just relaxing - your choice.",
+                 "Today's mission: Recharge. Your next workout will thank you."
+               ];
+               const randomMessage = restMessages[Math.floor(Math.random() * restMessages.length)];
+               
+               workoutJson = {
+                 title: `${selectedDay.day}: ${selectedDay.focus || 'Rest & Recovery'}`,
+                 isRestDay: true,
+                 restMessage: randomMessage,
+                 exercises: [],
+                 duration: selectedDay.duration || "Rest",
+                 notes: selectedDay.notes || "Take it easy today. Light activity like walking or stretching is encouraged."
+               };
+               console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> REST DAY: ${selectedDay.day}`);
+             } else {
+               workoutJson = {
+                 title: `${selectedDay.day}: ${selectedDay.focus}`,
+                 isRestDay: false,
+                 exercises: selectedDay.exercises,
+                 duration: selectedDay.duration,
+                 notes: selectedDay.notes
+               };
+               console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> Week Day ${dayPosition + 1}: ${selectedDay.day}`);
+             }
            } else {
-             console.log(`[StartNode] No workout days in plan for node ${nodeId}, using fallback.`);
+             console.log(`[StartNode] No schedule in plan for node ${nodeId}, using fallback.`);
            }
         } else {
           console.log(`[StartNode] No weekly plan found for user, using fallback workout.`);
