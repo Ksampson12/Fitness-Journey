@@ -234,7 +234,7 @@ export default function Profile() {
         </div>
 
         <h1 className="text-3xl font-display font-bold uppercase mb-1">
-          {profile.displayName || `User-${profile.userId.slice(0, 4)}`}
+          {profile.displayName || `User-${(profile.userId || 'test').slice(0, 4)}`}
         </h1>
         <p className="text-primary font-mono text-sm uppercase tracking-wider mb-8">
           {profile.avatarArchetype === "shark-male" ? "Shark" : profile.avatarArchetype === "dolphin-female" ? "Dolphin" : profile.avatarArchetype} Class
