@@ -476,6 +476,36 @@ export async function registerRoutes(
       const allNodes = await storage.getMapNodes();
       const node = allNodes.find(n => n.id === nodeId);
 
+      // Calculate expected schedule index for this node FIRST
+      // We need this to detect stale cached workouts
+      let expectedScheduleIndex: number | undefined;
+      let schedule: any[] = [];
+      let selectedDay: any = null;
+      
+      if (profile.weeklyPlan) {
+        const plan = profile.weeklyPlan as any;
+        schedule = plan.schedule || [];
+        
+        if (schedule.length > 0) {
+          const allZones = await storage.getMapZones();
+          const zoneOrderMap = new Map(allZones.map((z: any) => [z.id, z.orderIndex]));
+          
+          const sortedNodes = [...allNodes]
+            .filter((n: any) => n.type === "workout" || n.type === "boss" || n.type === "recovery")
+            .sort((a: any, b: any) => {
+              const zoneOrderA = zoneOrderMap.get(a.zoneId) ?? 0;
+              const zoneOrderB = zoneOrderMap.get(b.zoneId) ?? 0;
+              if (zoneOrderA !== zoneOrderB) return zoneOrderA - zoneOrderB;
+              return (a.orderIndex || 0) - (b.orderIndex || 0);
+            });
+          
+          const globalNodeIndex = sortedNodes.findIndex(n => n.id === nodeId);
+          expectedScheduleIndex = globalNodeIndex % schedule.length;
+          selectedDay = schedule[expectedScheduleIndex];
+          console.log(`[StartNode] Node ${nodeId} -> expected scheduleIndex ${expectedScheduleIndex} (${selectedDay?.day})`);
+        }
+      }
+
       // If refresh requested, delete old workout first
       if (refresh) {
         await storage.deleteActiveWorkout(userId, nodeId);
@@ -483,7 +513,14 @@ export async function registerRoutes(
       }
 
       // Check for existing active workout for this node
-      let workout = await storage.findActiveWorkout(userId, nodeId);
+      let workout: Awaited<ReturnType<typeof storage.findActiveWorkout>> = await storage.findActiveWorkout(userId, nodeId);
+      
+      // Detect stale cached workout: if scheduleIndex doesn't match expected, it's from an old plan
+      if (workout && expectedScheduleIndex !== undefined && workout.scheduleIndex !== expectedScheduleIndex) {
+        console.log(`[StartNode] Stale workout detected! Cached scheduleIndex=${workout.scheduleIndex}, expected=${expectedScheduleIndex}. Deleting stale workout.`);
+        await storage.deleteActiveWorkout(userId, nodeId);
+        workout = undefined;
+      }
       
       if (workout) {
         // Return existing workout - user is resuming or replaying
@@ -499,77 +536,49 @@ export async function registerRoutes(
             { name: "Pushups", duration: null, reps: "10" }
           ]
         };
-        let scheduleIndex: number | undefined;
+        let scheduleIndex: number | undefined = expectedScheduleIndex;
 
-        if (profile.weeklyPlan) {
-           const plan = profile.weeklyPlan as any;
-           const schedule = plan.schedule || [];
-           
-           if (schedule.length > 0) {
-             // Sort all nodes globally to find this node's position
-             const allZones = await storage.getMapZones();
-             const zoneOrderMap = new Map(allZones.map((z: any) => [z.id, z.orderIndex]));
-             
-             const sortedNodes = [...allNodes]
-               .filter((n: any) => n.type === "workout" || n.type === "boss" || n.type === "recovery")
-               .sort((a: any, b: any) => {
-                 const zoneOrderA = zoneOrderMap.get(a.zoneId) ?? 0;
-                 const zoneOrderB = zoneOrderMap.get(b.zoneId) ?? 0;
-                 if (zoneOrderA !== zoneOrderB) return zoneOrderA - zoneOrderB;
-                 return (a.orderIndex || 0) - (b.orderIndex || 0);
-               });
-             
-             // Find this node's global position
-             const globalNodeIndex = sortedNodes.findIndex(n => n.id === nodeId);
-             
-             // Cycle through ALL schedule days (including rest days) based on node position
-             const dayPosition = globalNodeIndex % schedule.length;
-             const selectedDay = schedule[dayPosition];
-             scheduleIndex = dayPosition;
-             
-             // Check if this is a rest day (no exercises, or focus/notes indicate rest/recovery)
-             const hasExercises = selectedDay.exercises && selectedDay.exercises.length > 0;
-             const focusText = selectedDay.focus?.toLowerCase() || '';
-             const notesText = selectedDay.notes?.toLowerCase() || '';
-             const isRestIndicator = focusText.includes('rest') || focusText.includes('recovery') || focusText.includes('off') ||
-                                     notesText.includes('rest day') || notesText.includes('recovery day');
-             const isRestDay = !hasExercises || isRestIndicator;
-             
-             if (isRestDay) {
-               // Create a rest day "workout" with positive messaging
-               const restMessages = [
-                 "Your muscles grow while you rest. Take this time to recover and come back stronger!",
-                 "Rest is part of the journey. Your body is rebuilding and getting stronger right now.",
-                 "Champions know when to rest. You've earned this recovery time!",
-                 "Active recovery day! Light stretching, walking, or just relaxing - your choice.",
-                 "Today's mission: Recharge. Your next workout will thank you."
-               ];
-               const randomMessage = restMessages[Math.floor(Math.random() * restMessages.length)];
-               
-               workoutJson = {
-                 title: `${selectedDay.day}: ${selectedDay.focus || 'Rest & Recovery'}`,
-                 isRestDay: true,
-                 restMessage: randomMessage,
-                 exercises: [],
-                 duration: selectedDay.duration || "Rest",
-                 notes: selectedDay.notes || "Take it easy today. Light activity like walking or stretching is encouraged."
-               };
-               console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> REST DAY: ${selectedDay.day}`);
-             } else {
-               workoutJson = {
-                 title: `${selectedDay.day}: ${selectedDay.focus}`,
-                 isRestDay: false,
-                 exercises: selectedDay.exercises,
-                 duration: selectedDay.duration,
-                 notes: selectedDay.notes
-               };
-               console.log(`[StartNode] Node ${nodeId} (position ${globalNodeIndex}) -> Week Day ${dayPosition + 1}: ${selectedDay.day}`);
-             }
-           } else {
-             console.log(`[StartNode] No schedule in plan for node ${nodeId}, using fallback.`);
-           }
+        if (selectedDay) {
+          // Check if this is a rest day (no exercises, or focus/notes indicate rest/recovery)
+          const hasExercises = selectedDay.exercises && selectedDay.exercises.length > 0;
+          const focusText = selectedDay.focus?.toLowerCase() || '';
+          const notesText = selectedDay.notes?.toLowerCase() || '';
+          const isRestIndicator = focusText.includes('rest') || focusText.includes('recovery') || focusText.includes('off') ||
+                                  notesText.includes('rest day') || notesText.includes('recovery day');
+          const isRestDay = !hasExercises || isRestIndicator;
+          
+          if (isRestDay) {
+            // Create a rest day "workout" with positive messaging
+            const restMessages = [
+              "Your muscles grow while you rest. Take this time to recover and come back stronger!",
+              "Rest is part of the journey. Your body is rebuilding and getting stronger right now.",
+              "Champions know when to rest. You've earned this recovery time!",
+              "Active recovery day! Light stretching, walking, or just relaxing - your choice.",
+              "Today's mission: Recharge. Your next workout will thank you."
+            ];
+            const randomMessage = restMessages[Math.floor(Math.random() * restMessages.length)];
+            
+            workoutJson = {
+              title: `${selectedDay.day}: ${selectedDay.focus || 'Rest & Recovery'}`,
+              isRestDay: true,
+              restMessage: randomMessage,
+              exercises: [],
+              duration: selectedDay.duration || "Rest",
+              notes: selectedDay.notes || "Take it easy today. Light activity like walking or stretching is encouraged."
+            };
+            console.log(`[StartNode] Node ${nodeId} (scheduleIndex ${expectedScheduleIndex}) -> REST DAY: ${selectedDay.day}`);
+          } else {
+            workoutJson = {
+              title: `${selectedDay.day}: ${selectedDay.focus}`,
+              isRestDay: false,
+              exercises: selectedDay.exercises,
+              duration: selectedDay.duration,
+              notes: selectedDay.notes
+            };
+            console.log(`[StartNode] Node ${nodeId} (scheduleIndex ${expectedScheduleIndex}) -> WORKOUT: ${selectedDay.day}`);
+          }
         } else {
-          console.log(`[StartNode] No weekly plan found for user, using fallback workout.`);
+          console.log(`[StartNode] No schedule in plan for node ${nodeId}, using fallback.`);
         }
 
         workout = await storage.createWorkout({
