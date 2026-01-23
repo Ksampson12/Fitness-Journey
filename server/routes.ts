@@ -408,8 +408,52 @@ export async function registerRoutes(
 
   // === Map Routes ===
   app.get(api.map.get.path, async (req, res) => {
-    const nodes = await storage.getMapNodes();
+    const baseNodes = await storage.getMapNodes();
     const zones = await storage.getMapZones();
+    
+    // Get user's weekly plan to dynamically determine node types
+    const userId = "test-user"; // Hardcoded for now
+    const profile = await storage.getUserProfile(userId);
+    
+    // If user has a weekly plan, determine node types based on their schedule
+    let nodes = baseNodes;
+    if (profile?.weeklyPlan) {
+      const plan = profile.weeklyPlan as any;
+      const schedule = plan.schedule || [];
+      
+      if (schedule.length > 0) {
+        // Sort nodes globally by zone order, then node order
+        const zoneOrderMap = new Map(zones.map((z: any) => [z.id, z.orderIndex]));
+        const sortedNodes = [...baseNodes].sort((a: any, b: any) => {
+          const zoneOrderA = zoneOrderMap.get(a.zoneId) ?? 0;
+          const zoneOrderB = zoneOrderMap.get(b.zoneId) ?? 0;
+          if (zoneOrderA !== zoneOrderB) return zoneOrderA - zoneOrderB;
+          return (a.orderIndex || 0) - (b.orderIndex || 0);
+        });
+        
+        // Determine each node's type based on the corresponding day in the schedule
+        nodes = sortedNodes.map((node, index) => {
+          const dayPosition = index % schedule.length;
+          const scheduleDay = schedule[dayPosition];
+          
+          // Check if this day is a rest day
+          const hasExercises = scheduleDay.exercises && scheduleDay.exercises.length > 0;
+          const focusText = scheduleDay.focus?.toLowerCase() || '';
+          const notesText = scheduleDay.notes?.toLowerCase() || '';
+          const isRestIndicator = focusText.includes('rest') || focusText.includes('recovery') || focusText.includes('off') ||
+                                  notesText.includes('rest day') || notesText.includes('recovery day');
+          const isRestDay = !hasExercises || isRestIndicator;
+          
+          return {
+            ...node,
+            type: isRestDay ? 'recovery' : 'workout',
+            scheduleDayName: scheduleDay.day,
+            scheduleFocus: scheduleDay.focus
+          };
+        });
+      }
+    }
+    
     res.json({ nodes, zones });
   });
 

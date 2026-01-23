@@ -19,7 +19,9 @@ Key features:
 The AI generates a full 7-day weekly schedule that includes both workout days and rest/recovery days:
 - **Workout days**: Include exercises, duration, and focus area
 - **Rest days**: Include motivational messaging, special Moon-themed purple UI in WorkoutPlayer
-- Map nodes cycle through ALL 7 days (workout + rest), not just workout days
+- Each zone has 7 nodes representing one full week (Mon-Sun)
+- Node types are DYNAMICALLY determined based on user's weekly plan (workout vs recovery)
+- Map API returns `scheduleDayName` and `scheduleFocus` for each node
 - Rest day detection: empty exercises array OR focus/notes contains "rest"/"recovery"/"off"
 - Completing rest days marks node as complete and contributes to streak maintenance
 - Streak calculation respects rest days - won't break streak for scheduled rest
