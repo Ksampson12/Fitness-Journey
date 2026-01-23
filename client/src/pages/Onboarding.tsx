@@ -665,7 +665,7 @@ export default function Onboarding() {
   );
 
   return (
-    <div className="min-h-screen bg-background p-6 flex flex-col justify-center max-w-lg mx-auto">
+    <div className="min-h-screen-safe bg-background p-6 flex flex-col justify-center max-w-lg mx-auto safe-area-all">
       <div className="mb-8 mt-8">
         <h1 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
           Initialize

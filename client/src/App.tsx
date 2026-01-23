@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserProfile } from "@/hooks/use-user";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
@@ -100,6 +101,7 @@ function App() {
       <ReverificationWrapper>
         <Router />
       </ReverificationWrapper>
+      <PWAInstallPrompt />
     </QueryClientProvider>
   );
 }

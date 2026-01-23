@@ -20,7 +20,7 @@ export default function Goals() {
   const weeklyPlan = profile.weeklyPlan as any;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen-safe bg-background pb-24 safe-area-top">
       <div className="p-6 pt-12">
         <h1 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
           Your Progress

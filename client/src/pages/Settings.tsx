@@ -105,7 +105,7 @@ export default function Settings() {
   if (!profile) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen-safe bg-background pb-24 safe-area-top">
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-white/5">
         <div className="flex items-center px-4 py-4">
           <Button 

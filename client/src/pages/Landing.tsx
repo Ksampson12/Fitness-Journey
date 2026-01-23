@@ -4,7 +4,7 @@ import { Dumbbell, Play, Shield } from "lucide-react";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
+    <div className="min-h-screen-safe bg-background text-foreground flex flex-col relative overflow-hidden safe-area-all">
       {/* Background Gradients */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-primary/5 blur-[100px] rounded-full -translate-y-1/2 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-full h-[500px] bg-secondary/5 blur-[100px] rounded-full translate-y-1/2 pointer-events-none" />

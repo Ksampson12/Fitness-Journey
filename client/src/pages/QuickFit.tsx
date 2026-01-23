@@ -219,7 +219,7 @@ export default function QuickFit() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24 flex flex-col">
+    <div className="min-h-screen-safe bg-background pb-24 flex flex-col safe-area-top">
       <div className="h-24 bg-gradient-to-b from-blue-500/10 to-background flex items-end p-6">
         <h1 className="text-xl font-display font-bold uppercase tracking-wider text-blue-400">QuickFit Coach</h1>
       </div>

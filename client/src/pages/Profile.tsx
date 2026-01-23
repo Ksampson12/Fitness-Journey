@@ -111,7 +111,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen-safe bg-background pb-24 safe-area-top">
       <div className="h-48 bg-gradient-to-b from-primary/10 to-background relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-20" />
       </div>
