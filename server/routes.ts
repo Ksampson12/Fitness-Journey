@@ -103,19 +103,15 @@ export async function registerRoutes(
 
   // === User Routes ===
   app.get(api.user.getProfile.path, async (req: any, res) => {
-    // Just return a default profile for testing
-    res.json({
-      id: "test-user",
-      name: "Test User",
-      email: "test@example.com",
-      completedNodeIds: ["z1-n1"],
-      streak: 1,
-      totalWorkouts: 0,
-      weeklyPlan: null,
-      notificationsEnabled: false,
-      workoutReminderTime: "09:00",
-      streakReminderEnabled: true,
-    });
+    // Try to get the actual profile from storage
+    const userId = "test-user"; // Hardcoded for now
+    const profile = await storage.getUserProfile(userId);
+    
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    
+    res.json(profile);
   });
 
   app.post(api.user.updateOnboarding.path, async (req: any, res) => {
