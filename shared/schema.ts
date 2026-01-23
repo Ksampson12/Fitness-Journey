@@ -98,18 +98,23 @@ export const workouts = pgTable("workouts", {
   userId: varchar("user_id").notNull(), // Links to auth.users.id
   nodeId: text("node_id").notNull(), // Which node this workout is for
   
-  // Workout data
-  plan: text("plan").notNull(), // JSON workout plan
+  // Workout data (migrate from existing columns)
+  plan: text("plan"), // JSON workout plan - will be populated from existing data
   
   // Completion tracking
   completedAt: timestamp("completed_at"), // When completed
   completionMetrics: text("completion_metrics"), // JSON with duration, calories, etc
   
-  // AI tracking
-  aiModel: text("ai_model").notNull(), // gpt-4, gpt-3.5-turbo, etc
-  aiTokensUsed: integer("ai_tokens_used").notNull(), // Total tokens used
-  aiCost: integer("ai_cost").notNull(), // Cost in cents (0.01 = 1 cent)
+  // AI tracking (with defaults to avoid data loss)
+  aiModel: text("ai_model").default("fallback"), // gpt-4, gpt-3.5-turbo, etc
+  aiTokensUsed: integer("ai_tokens_used").default(0), // Total tokens used
+  aiCost: integer("ai_cost").default(0), // Cost in cents (0.01 = 1 cent)
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  
+  // Keep old columns temporarily for migration
+  source: text("source"), // Keep for migration
+  workoutJson: text("workout_json"), // Keep for migration  
+  scheduleIndex: integer("schedule_index"), // Keep for migration
 });
 
 export const aiUsage = pgTable("ai_usage", {
