@@ -1,0 +1,75 @@
+Hi — the app is ~90% complete, but I need it to be mobile-first and ready to deploy to both iOS + Android.
+
+Goal: Convert/align the project so it can ship as a cross-platform mobile app (recommended stack: React Native + Expo unless there’s a strong reason not to). I want to be able to build and deploy with minimal extra work later.
+
+1) Confirm current state
+
+Identify what the app is currently built with (React web? Next.js? etc.)
+
+List any blockers for running on iOS/Android (web-only libraries, DOM usage, Node-only modules)
+
+2) Make the UI mobile-ready
+
+Ensure layouts are responsive for common phone sizes
+
+Use mobile-safe components (React Native equivalents, no window/document)
+
+Add safe areas (notches), keyboard handling, and scroll behavior
+
+Support light/dark mode if easy
+
+3) Cross-platform essentials
+
+Implement/verify navigation (React Navigation)
+
+Permissions (notifications, health-related permissions if any)
+
+Push notifications for daily reminders (Expo Notifications or native config)
+
+Offline tolerance (at least: app doesn’t crash without network)
+
+4) Deployment readiness
+
+Create the minimum needed to ship to both stores:
+
+App icons, splash screen, app name, bundle identifiers
+
+Versioning + build configuration
+
+Environment variables handled properly (no secrets in client)
+
+“Production build” instructions:
+
+How to build iOS + Android using EAS Build
+
+Steps for App Store / Play Store release
+
+5) Security & reliability
+
+Ensure API keys are not exposed in the client
+
+All AI workout generation should run server-side
+
+Add basic error handling + crash-safe states
+
+Logging strategy (at least console + simple remote logging optional)
+
+6) Deliverables
+
+Please provide:
+
+A short migration plan (what you changed and why)
+
+A list of any remaining TODOs before store submission
+
+A “Deploy Now” checklist I can follow step-by-step
+
+Acceptance Criteria (definition of done):
+
+Runs on iOS simulator + Android emulator successfully
+
+Can generate workouts without platform-specific issues
+
+Push notification reminder can be scheduled/tested
+
+EAS build produces installable builds for both platforms
