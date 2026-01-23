@@ -79,7 +79,9 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose, nodeId, onW
   const steps = workout?.exercises || workout?.steps || [];
   const currentStep = steps[stepIndex];
   
-  const totalSets = typeof currentStep?.sets === 'number' ? currentStep.sets : 0;
+  // Default to 3 sets if exercise has reps but no sets specified (fallback for older data or AI without sets)
+  const hasRepsOrDuration = currentStep?.reps || currentStep?.duration;
+  const totalSets = typeof currentStep?.sets === 'number' ? currentStep.sets : (hasRepsOrDuration ? 3 : 0);
   const isSetBasedExercise = totalSets > 0;
 
   const parseDuration = useCallback((duration: string | undefined): number | null => {

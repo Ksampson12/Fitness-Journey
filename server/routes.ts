@@ -200,7 +200,7 @@ export async function registerRoutes(
            
            Response format: { 
              schedule: [
-               { day: "Monday", focus: string, duration: string, notes: string, exercises: [...] },
+               { day: "Monday", focus: string, duration: string, notes: string, exercises: [{ name: string, duration?: string, reps?: string, sets: number, notes?: string }] },
                { day: "Tuesday", focus: string, duration: string, notes: string, exercises: [...] },
                { day: "Wednesday", focus: string, duration: string, notes: string, exercises: [...] },
                { day: "Thursday", focus: string, duration: string, notes: string, exercises: [...] },
@@ -212,6 +212,8 @@ export async function registerRoutes(
              trainerNote: string,
              explanation: string
            }
+           
+           IMPORTANT: Every exercise MUST have a 'sets' field with a number (typically 2-4 sets per exercise). This is REQUIRED.
            
            For REST days: set focus to "Rest & Recovery" or "Active Recovery", duration to "Rest", and exercises to empty array [].`;
            
@@ -532,8 +534,8 @@ export async function registerRoutes(
         let workoutJson: any = {
           title: node?.name || "Workout",
           exercises: [
-            { name: "Jumping Jacks", duration: "60s", reps: null },
-            { name: "Pushups", duration: null, reps: "10" }
+            { name: "Jumping Jacks", duration: "60s", reps: null, sets: 3 },
+            { name: "Pushups", duration: null, reps: "10", sets: 3 }
           ]
         };
         let scheduleIndex: number | undefined = expectedScheduleIndex;
@@ -688,8 +690,8 @@ export async function registerRoutes(
       let workoutJson = {
         title: `Quick ${duration}min ${focus}`,
         exercises: [
-           { name: "Jumping Jacks", duration: "60s", reps: null },
-           { name: "Burpees", duration: null, reps: "15" }
+           { name: "Jumping Jacks", duration: "60s", reps: null, sets: 3 },
+           { name: "Burpees", duration: null, reps: "15", sets: 3 }
         ]
       };
 
@@ -704,7 +706,7 @@ export async function registerRoutes(
              model: "gpt-5.1",
              messages: [
                { role: "system", content: systemPrompt },
-               { role: "user", content: "Generate workout JSON: { title: string, exercises: { name: string, duration?: string, reps?: string, sets?: number, notes?: string }[] }" }
+               { role: "user", content: "Generate workout JSON: { title: string, exercises: { name: string, duration?: string, reps?: string, sets: number (REQUIRED, typically 2-4), notes?: string }[] }. Every exercise MUST have a 'sets' field with a number." }
              ],
              response_format: { type: "json_object" }
            });
