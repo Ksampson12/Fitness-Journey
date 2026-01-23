@@ -26,6 +26,7 @@ export interface IStorage {
   findActiveWorkout(userId: string, nodeId: string): Promise<Workout | undefined>;
   createWorkout(workout: InsertWorkout): Promise<Workout>;
   completeWorkout(id: number, metrics: any): Promise<Workout>;
+  deleteActiveWorkout(userId: string, nodeId: string): Promise<void>;
   
   // AI Usage
   insertAiUsage(usage: any): Promise<void>;
@@ -111,6 +112,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(workouts.id, id))
       .returning();
     return completed;
+  }
+
+  async deleteActiveWorkout(userId: string, nodeId: string): Promise<void> {
+    await db.delete(workouts)
+      .where(and(
+        eq(workouts.userId, userId),
+        eq(workouts.nodeId, nodeId),
+        isNull(workouts.completedAt)
+      ));
   }
 
   async seedMapData(): Promise<void> {

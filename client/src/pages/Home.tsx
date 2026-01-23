@@ -33,7 +33,7 @@ export default function Home() {
   const handleStartWorkout = async () => {
     try {
       const data = await startNodeMutation.mutateAsync({ nodeId: selectedNode.id });
-      setWorkoutData(data);
+      setWorkoutData({ ...data, nodeId: selectedNode.id });
       setSelectedNode(null); // Close modal
     } catch (error: any) {
       toast({
@@ -41,6 +41,12 @@ export default function Home() {
         title: "Access Denied",
         description: error.message || "Failed to start mission.",
       });
+    }
+  };
+
+  const handleWorkoutRefresh = (newData: any) => {
+    if (workoutData) {
+      setWorkoutData({ ...newData, nodeId: workoutData.nodeId });
     }
   };
 
@@ -192,6 +198,8 @@ export default function Home() {
           onClose={() => setWorkoutData(null)}
           workoutId={workoutData.workoutId}
           workout={workoutData.workout}
+          nodeId={workoutData.nodeId}
+          onWorkoutRefresh={handleWorkoutRefresh}
         />
       )}
     </div>

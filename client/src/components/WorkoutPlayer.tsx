@@ -3,13 +3,15 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, Timer, Dumbbell, X, ArrowRight, Sparkles, RotateCcw, Moon, Heart } from "lucide-react";
-import { useCompleteNode } from "@/hooks/use-game";
+import { useCompleteNode, useStartNode } from "@/hooks/use-game";
 
 type WorkoutPlayerProps = {
   workoutId: number;
   workout: any;
   isOpen: boolean;
   onClose: () => void;
+  nodeId?: string;
+  onWorkoutRefresh?: (newWorkoutData: any) => void;
 };
 
 type WorkoutProgress = {
@@ -56,7 +58,7 @@ function clearProgress() {
   }
 }
 
-export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPlayerProps) {
+export function WorkoutPlayer({ workoutId, workout, isOpen, onClose, nodeId, onWorkoutRefresh }: WorkoutPlayerProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [totalTimer, setTotalTimer] = useState(0);
@@ -66,7 +68,9 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
   const [allSetsComplete, setAllSetsComplete] = useState(false);
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const savedProgressRef = useRef<WorkoutProgress | null>(null);
+  const startNodeMutation = useStartNode();
   const skipNextResetRef = useRef(false);
   const lastStepIndexRef = useRef<number | null>(null);
   
@@ -120,10 +124,23 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
     setShowResumePrompt(false);
   };
 
-  const handleStartFresh = () => {
+  const handleStartFresh = async () => {
     clearProgress();
     savedProgressRef.current = null;
     setShowResumePrompt(false);
+    
+    // If we have nodeId and refresh callback, fetch a fresh workout from the server
+    if (nodeId && onWorkoutRefresh) {
+      setIsRefreshing(true);
+      try {
+        const freshData = await startNodeMutation.mutateAsync({ nodeId, refresh: true });
+        onWorkoutRefresh(freshData);
+      } catch (error) {
+        console.error('Failed to refresh workout:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
   };
 
   // Reset exercise state when moving to a new step (only if not restoring)
@@ -298,9 +315,10 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose }: WorkoutPl
                 variant="outline" 
                 size="lg" 
                 className="w-full"
+                disabled={isRefreshing}
                 data-testid="button-start-fresh"
               >
-                Start Fresh
+                {isRefreshing ? "Refreshing..." : "Start Fresh"}
               </Button>
             </div>
           </div>

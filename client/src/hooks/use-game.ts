@@ -20,7 +20,7 @@ export function useGameMap() {
 // POST /api/game/start-node
 export function useStartNode() {
   return useMutation({
-    mutationFn: async (data: { nodeId: string }) => {
+    mutationFn: async (data: { nodeId: string; refresh?: boolean }) => {
       const validated = api.game.startNode.input.parse(data);
       const res = await fetch(api.game.startNode.path, {
         method: api.game.startNode.method,

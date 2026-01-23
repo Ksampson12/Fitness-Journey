@@ -460,7 +460,7 @@ export async function registerRoutes(
   // === Game Routes ===
   app.post(api.game.startNode.path, async (req: any, res) => {
     try {
-      const { nodeId } = api.game.startNode.input.parse(req.body);
+      const { nodeId, refresh } = api.game.startNode.input.parse(req.body);
       const userId = "test-user"; // Hardcoded for now
 
       const profile = await storage.getUserProfile(userId);
@@ -470,6 +470,12 @@ export async function registerRoutes(
 
       const allNodes = await storage.getMapNodes();
       const node = allNodes.find(n => n.id === nodeId);
+
+      // If refresh requested, delete old workout first
+      if (refresh) {
+        await storage.deleteActiveWorkout(userId, nodeId);
+        console.log(`[StartNode] Deleted old workout for node ${nodeId} (refresh requested)`);
+      }
 
       // Check for existing active workout for this node
       let workout = await storage.findActiveWorkout(userId, nodeId);

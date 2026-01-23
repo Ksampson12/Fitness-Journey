@@ -85,6 +85,7 @@ export const api = {
       path: '/api/game/start-node',
       input: z.object({
         nodeId: z.string(),
+        refresh: z.boolean().optional(),
       }),
       responses: {
         200: z.object({
