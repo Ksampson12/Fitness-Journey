@@ -25,7 +25,7 @@ The AI generates a full 7-day weekly schedule that includes both workout days an
 - Rest day detection: empty exercises array OR focus/notes contains "rest"/"recovery"/"off"
 - Completing rest days marks node as complete and contributes to streak maintenance
 - Streak calculation respects rest days - won't break streak for scheduled rest
-- **Note**: Existing users with old 4-day plans will need to regenerate their plan to get the 7-day schedule
+- **Plan regeneration**: When a new weekly plan is generated (onboarding), all uncompleted workouts are wiped to ensure "Accept Mission" creates fresh workouts from the current plan
 
 ## User Preferences
 
