@@ -101,8 +101,22 @@ export function WorkoutPlayer({ workoutId, workout, isOpen, onClose, nodeId, onW
     if (isOpen && !hasRestoredProgress) {
       const savedProgress = loadProgress();
       if (savedProgress && savedProgress.workoutId === workoutId) {
-        savedProgressRef.current = savedProgress;
-        setShowResumePrompt(true);
+        // Only show resume prompt if meaningful progress was made:
+        // - Moved past the first exercise, OR
+        // - Completed at least one set, OR
+        // - Spent at least 10 seconds on the workout
+        const hasMeaningfulProgress = 
+          savedProgress.stepIndex > 0 || 
+          savedProgress.completedSets > 0 || 
+          savedProgress.totalTimer >= 10;
+        
+        if (hasMeaningfulProgress) {
+          savedProgressRef.current = savedProgress;
+          setShowResumePrompt(true);
+        } else {
+          // Clear trivial progress
+          clearProgress();
+        }
       }
       setHasRestoredProgress(true);
     }
