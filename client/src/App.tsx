@@ -97,11 +97,15 @@ function ReverificationWrapper({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-md px-4 sm:px-6">
+          <ReverificationWrapper>
+            <Router />
+          </ReverificationWrapper>
+          <PWAInstallPrompt />
+        </div>
+      </div>
       <Toaster />
-      <ReverificationWrapper>
-        <Router />
-      </ReverificationWrapper>
-      <PWAInstallPrompt />
     </QueryClientProvider>
   );
 }

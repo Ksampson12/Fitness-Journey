@@ -11,7 +11,7 @@ const steps = [
   { id: "intro", title: "Welcome", description: "Let's get to know you." },
   { id: "profile", title: "Profile Basics", description: "Personalize your experience" },
   { id: "fitness", title: "Fitness Background", description: "Where are you starting from?" },
-  { id: "goals", title: "Goals", description: "What drives you?" },
+  { id: "goals", title: "Primary Goal", description: "Choose your main focus" },
   { id: "schedule", title: "Availability", description: "When do you train?" },
   { id: "equipment", title: "Equipment", description: "What do you have access to?" },
   { id: "limitations", title: "Limitations", description: "Your safety comes first" },
@@ -259,20 +259,19 @@ export default function Onboarding() {
   const renderProfileBasics = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">What should we call you?</label>
-          <Input
-            value={formData.displayName}
-            onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-            placeholder="Enter your name"
-            className="bg-card border-white/10"
-          />
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+            Welcome, {formData.displayName || "Champion"}! 🚀
+          </h2>
+          <p className="text-muted-foreground">
+            Let's customize your fitness journey and build your ultimate training profile!
+          </p>
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-2">Age Range (optional)</label>
+          <label className="block text-sm font-medium mb-2">Age Range</label>
           <div className="grid grid-cols-2 gap-2">
-            {["under-18", "18-24", "25-34", "35-44", "45-54", "55+"].map((age) => (
+            {["under 18", "18-24", "25-34", "35-44", "45-54", "55+"].map((age) => (
               <button
                 key={age}
                 onClick={() => setFormData({ ...formData, ageRange: age })}
@@ -282,7 +281,7 @@ export default function Onboarding() {
                     : "border-white/10 bg-card hover:border-white/20"
                 }`}
               >
-                {age.replace("-", " ").replace(/\b\w/g, l => l.toUpperCase())}
+                {age}
               </button>
             ))}
           </div>
@@ -316,31 +315,6 @@ export default function Onboarding() {
           ))}
         </div>
       </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-2">Training Experience (optional)</label>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { value: "never", label: "Never trained" },
-            { value: "some", label: "Some experience" },
-            { value: "1-3-years", label: "1-3 years" },
-            { value: "3-plus-years", label: "3+ years" }
-          ].map((exp) => (
-            <button
-              key={exp.value}
-              onClick={() => setFormData({ ...formData, trainingExperience: exp.value })}
-              className={`p-3 rounded-lg border text-sm transition-all ${
-                formData.trainingExperience === exp.value
-                  ? "border-primary bg-primary/20 text-primary"
-                  : "border-white/10 bg-card hover:border-white/20"
-              }`}
-            >
-              {exp.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 
   const renderGoals = () => (
