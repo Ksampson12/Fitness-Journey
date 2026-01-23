@@ -239,6 +239,11 @@ export async function registerRoutes(
       }
       
       console.log("[Onboarding] Final profile to return:", profile);
+      
+      // Verify the profile was actually saved
+      const verifyProfile = await storage.getUserProfile(userId);
+      console.log("[Onboarding] Verification - profile in DB after save:", verifyProfile);
+      
       res.json(profile);
     } catch (err) {
       if (err instanceof z.ZodError) {
