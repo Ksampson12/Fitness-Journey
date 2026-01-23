@@ -467,13 +467,23 @@ export async function registerRoutes(
           nodeId,
           source: "weekly-plan",
           scheduleIndex,
-          workoutJson,
+          workoutJson: JSON.stringify(workoutJson),
         });
+      }
+
+      // Parse workoutJson if it's a string (stored as text in DB)
+      let parsedWorkout = workout.workoutJson;
+      if (typeof parsedWorkout === 'string') {
+        try {
+          parsedWorkout = JSON.parse(parsedWorkout);
+        } catch (e) {
+          console.error('Failed to parse workoutJson:', e);
+        }
       }
 
       res.json({
         workoutId: workout.id,
-        workout: workout.workoutJson,
+        workout: parsedWorkout,
         node
       });
 
