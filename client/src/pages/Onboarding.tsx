@@ -69,6 +69,15 @@ export default function Onboarding() {
         displayName: formData.displayName,
         fitnessLevel: formData.fitnessLevel,
         avatarArchetype: formData.avatarArchetype,
+        userId: "test-user", // Hardcoded for now
+        currentNodeId: "z1-n1", // Default starting node
+        unlockedNodeIds: ["z1-n1"], // Default unlocked nodes
+        completedNodeIds: [], // Empty initially
+        xp: 0,
+        coins: 0,
+        streak: 0,
+        evolutionStage: 1,
+        equippedItems: [],
       };
 
       // Only add optional fields if they have values
