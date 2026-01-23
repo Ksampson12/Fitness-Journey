@@ -36,17 +36,7 @@ export const api = {
     updateOnboarding: {
       method: 'POST' as const,
       path: '/api/user/onboarding',
-      input: z.object({
-        displayName: z.string().min(1),
-        fitnessLevel: z.enum(['beginner', 'intermediate', 'advanced']),
-        goals: z.array(z.string()),
-        equipment: z.array(z.string()),
-        activities: z.array(z.string()),
-        avatarArchetype: z.string(),
-        age: z.coerce.number().optional(),
-        height: z.coerce.number().optional(),
-        weight: z.coerce.number().optional(),
-      }),
+      input: insertUserProfileSchema,
       responses: {
         200: z.any(), // Returns updated UserProfile
       },
