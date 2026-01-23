@@ -210,7 +210,7 @@ export async function registerRoutes(
            }`;
            
            const completion = await openai.chat.completions.create({
-             model: "gpt-4",
+             model: "gpt-5.1",
              messages: [
                { role: "system", content: systemPrompt },
                { role: "user", content: "Generate detailed weekly plan in JSON format." }
