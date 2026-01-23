@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  userProfiles, nodes, zones, workouts,
+  userProfiles, nodes, zones, workouts, aiUsage,
   emailIdentities, magicLinkTokens, otpCodes,
   type UserProfile, type InsertUserProfile, 
   type GameNode, type GameZone, type Workout, type InsertWorkout,
@@ -8,7 +8,7 @@ import {
   type MagicLinkToken, type InsertMagicLinkToken,
   type OtpCode, type InsertOtpCode
 } from "@shared/schema";
-import { eq, and, isNull, gt, lt } from "drizzle-orm";
+import { eq, and, isNull, gt, lt, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User Profile
@@ -26,6 +26,11 @@ export interface IStorage {
   findActiveWorkout(userId: string, nodeId: string): Promise<Workout | undefined>;
   createWorkout(workout: InsertWorkout): Promise<Workout>;
   completeWorkout(id: number, metrics: any): Promise<Workout>;
+  
+  // AI Usage
+  insertAiUsage(usage: any): Promise<void>;
+  getAiUsageStats(): Promise<any>;
+  getAiUsageByUser(): Promise<any>;
   
   // Email Auth
   getEmailIdentityByEmail(email: string): Promise<EmailIdentity | undefined>;
@@ -282,6 +287,71 @@ export class DatabaseStorage implements IStorage {
     await db.update(otpCodes)
       .set({ usedAt: new Date() })
       .where(eq(otpCodes.id, id));
+  }
+
+  // AI Usage Methods
+  async insertAiUsage(usage: any): Promise<void> {
+    await db.insert(aiUsage).values(usage);
+  }
+
+  async getAiUsageStats(): Promise<any> {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Get total stats
+    const totalStats = await db.select({
+      totalRequests: sql<number>`count(*)`,
+      totalCost: sql<number>`sum(cost)`,
+    }).from(aiUsage).where(eq(aiUsage.success, true));
+
+    // Get today's stats
+    const todayStats = await db.select({
+      requestsToday: sql<number>`count(*)`,
+      costToday: sql<number>`sum(cost)`,
+    }).from(aiUsage).where(and(
+      eq(aiUsage.success, true),
+      gt(aiUsage.createdAt, today)
+    ));
+
+    // Get top users
+    const topUsers = await db.select({
+      userId: aiUsage.userId,
+      displayName: userProfiles.displayName,
+      requests: sql<number>`count(*)`,
+      cost: sql<number>`sum(cost)`,
+    })
+    .from(aiUsage)
+    .innerJoin(userProfiles, eq(aiUsage.userId, userProfiles.userId))
+    .where(eq(aiUsage.success, true))
+    .groupBy(aiUsage.userId, userProfiles.displayName)
+    .orderBy(sql`count(*) desc`)
+    .limit(5);
+
+    return {
+      totalRequests: totalStats[0]?.totalRequests || 0,
+      totalCost: (totalStats[0]?.totalCost || 0) / 100, // Convert cents to dollars
+      requestsToday: todayStats[0]?.requestsToday || 0,
+      costToday: (todayStats[0]?.costToday || 0) / 100, // Convert cents to dollars
+      topUsers: topUsers.map(u => ({
+        ...u,
+        cost: u.cost / 100 // Convert cents to dollars
+      }))
+    };
+  }
+
+  async getAiUsageByUser(): Promise<any> {
+    // Get AI usage per user for admin dashboard
+    const userStats = await db.select({
+      userId: userProfiles.userId,
+      displayName: userProfiles.displayName,
+      aiRequests: sql<number>`count(*)`,
+      lastAiRequest: sql<Date>`max(${aiUsage.createdAt})`,
+    })
+    .from(userProfiles)
+    .leftJoin(aiUsage, eq(userProfiles.userId, aiUsage.userId))
+    .groupBy(userProfiles.userId, userProfiles.displayName);
+
+    return userStats;
   }
 }
 

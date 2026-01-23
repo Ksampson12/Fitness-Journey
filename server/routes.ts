@@ -1,9 +1,9 @@
 import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
+import { z } from 'zod';
+import { insertUserProfileSchema, nodes, zones, aiUsage } from './schema';
 import { api, errorSchemas } from "@shared/routes";
-import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -27,6 +27,36 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY
   );
+}
+
+// AI Usage Tracking Helper
+async function trackAiUsage(
+  userId: string,
+  endpoint: string,
+  aiModel: string,
+  tokensUsed: number,
+  cost: number,
+  ipAddress: string,
+  userAgent: string,
+  success: boolean,
+  errorMessage?: string
+) {
+  try {
+    await storage.insertAiUsage({
+      userId,
+      endpoint,
+      aiModel,
+      tokensUsed,
+      cost,
+      ipAddress,
+      userAgent,
+      success,
+      errorMessage: errorMessage || null,
+    });
+  } catch (error) {
+    console.error("Failed to track AI usage:", error);
+    // Don't throw - tracking failures shouldn't break the main flow
+  }
 }
 
 function calculateStreak(
@@ -129,6 +159,15 @@ export async function registerRoutes(
       let weeklyPlan = null;
       try {
         if (process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+           console.log("OpenAI API Key found:", process.env.AI_INTEGRATIONS_OPENAI_API_KEY ? "YES" : "NO");
+           console.log("Generating AI plan with data:", {
+             displayName: input.displayName,
+             fitnessLevel: input.fitnessLevel,
+             primaryGoal: input.primaryGoal,
+             equipment: input.equipment,
+             workoutDaysPerWeek: input.workoutDaysPerWeek
+           });
+           
            const systemPrompt = `You are an expert personal trainer creating a FULLY CUSTOMIZED 7-day workout plan.
            CLIENT PROFILE:
            • Name: ${input.displayName}
@@ -142,7 +181,7 @@ export async function registerRoutes(
            • Best Time: ${input.bestTimeOfDay}
            • Location: ${input.workoutLocation}
            • Available Equipment: ${input.equipment.join(', ') || 'Bodyweight only'}
-           • Injuries/Limitations: ${input.injuriesOrLimitations === 'yes' ? input.injuriesOrLimitations : 'None'}
+           • Injuries/Limitations: ${input.injuriesOrLimitations || 'None'}
            • Movements to Avoid: ${input.movementsToAvoid.join(', ') || 'None'}
            • Preferred Style: ${input.workoutStyle}
            • Intensity Preference: ${input.intensityPreference}
@@ -171,16 +210,18 @@ export async function registerRoutes(
            }`;
            
            const completion = await openai.chat.completions.create({
-             model: "gpt-5.1",
+             model: "gpt-4",
              messages: [
                { role: "system", content: systemPrompt },
-               { role: "user", content: "Generate detailed weekly plan." }
+               { role: "user", content: "Generate detailed weekly plan in JSON format." }
              ],
              response_format: { type: "json_object" }
            });
            const content = completion.choices[0].message.content;
+           console.log("AI Response:", content);
            if (content) {
              weeklyPlan = JSON.parse(content);
+             console.log("Parsed weekly plan:", weeklyPlan);
            }
         }
       } catch (e) {
@@ -298,12 +339,36 @@ export async function registerRoutes(
         xp: userProfiles.xp,
         coins: userProfiles.coins,
         streak: userProfiles.streak,
-        createdAt: userProfiles.createdAt
-      }).from(userProfiles).orderBy(userProfiles.id);
+        createdAt: userProfiles.createdAt,
+      }).from(userProfiles);
+
+      // Get AI usage stats for each user
+      const aiUsageByUser = await storage.getAiUsageByUser();
       
-      res.json(users);
-    } catch (err) {
-      throw err;
+      // Merge AI usage data with user data
+      const usersWithAiUsage = users.map(user => {
+        const aiStats = aiUsageByUser.find((stats: any) => stats.userId === user.userId);
+        return {
+          ...user,
+          aiRequests: aiStats?.aiRequests || 0,
+          lastAiRequest: aiStats?.lastAiRequest || null,
+        };
+      });
+
+      res.json(usersWithAiUsage);
+    } catch (error) {
+      console.error('Failed to fetch admin users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  app.get('/api/admin/ai-usage', async (req: any, res) => {
+    try {
+      const stats = await storage.getAiUsageStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Failed to fetch AI usage stats:', error);
+      res.status(500).json({ message: 'Failed to fetch AI usage stats' });
     }
   });
 

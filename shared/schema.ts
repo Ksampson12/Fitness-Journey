@@ -98,14 +98,32 @@ export const workouts = pgTable("workouts", {
   userId: varchar("user_id").notNull(), // Links to auth.users.id
   nodeId: text("node_id").notNull(), // Which node this workout is for
   
-  source: text("source").notNull(), // ai, template, weekly-plan
-  scheduleIndex: integer("schedule_index"), // Which day index from weekly plan (0-indexed)
-  workoutJson: jsonb("workout_json").notNull(), // The actual AI generated workout structure
+  // Workout data
+  plan: text("plan").notNull(), // JSON workout plan
   
-  completedAt: timestamp("completed_at"),
-  completionMetrics: jsonb("completion_metrics"), // { calories: 300, duration: 1800 }
+  // Completion tracking
+  completedAt: timestamp("completed_at"), // When completed
+  completionMetrics: text("completion_metrics"), // JSON with duration, calories, etc
   
-  createdAt: timestamp("created_at").defaultNow(),
+  // AI tracking
+  aiModel: text("ai_model").notNull(), // gpt-4, gpt-3.5-turbo, etc
+  aiTokensUsed: integer("ai_tokens_used").notNull(), // Total tokens used
+  aiCost: integer("ai_cost").notNull(), // Cost in cents (0.01 = 1 cent)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const aiUsage = pgTable("ai_usage", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // Links to auth.users.id
+  endpoint: text("endpoint").notNull(), // onboarding, quick-fit, etc
+  aiModel: text("ai_model").notNull(), // gpt-4, gpt-3.5-turbo, etc
+  tokensUsed: integer("tokens_used").notNull(), // Total tokens used
+  cost: integer("cost").notNull(), // Cost in cents
+  ipAddress: text("ip_address").notNull(), // For rate limiting
+  userAgent: text("user_agent"), // Browser info
+  success: boolean("success").notNull(), // Whether the request succeeded
+  errorMessage: text("error_message"), // Error message if failed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // === EMAIL AUTHENTICATION TABLES ===
