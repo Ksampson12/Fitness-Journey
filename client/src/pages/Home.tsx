@@ -45,12 +45,19 @@ export default function Home() {
   };
 
   const isNodeLocked = (nodeId: string) => {
+    // Handle undefined arrays safely
+    const unlockedIds = profile.unlockedNodeIds || [];
+    const completedIds = profile.completedNodeIds || [];
+    
     // If it's the first node, it's unlocked if user has no unlocked nodes
-    if (map.nodes[0].id === nodeId && (!profile.unlockedNodeIds || profile.unlockedNodeIds.length === 0)) return false;
-    return !profile.unlockedNodeIds.includes(nodeId) && !profile.completedNodeIds.includes(nodeId);
+    if (map.nodes[0].id === nodeId && unlockedIds.length === 0) return false;
+    return !unlockedIds.includes(nodeId) && !completedIds.includes(nodeId);
   };
 
-  const isNodeCompleted = (nodeId: string) => profile.completedNodeIds.includes(nodeId);
+  const isNodeCompleted = (nodeId: string) => {
+    const completedIds = profile.completedNodeIds || [];
+    return completedIds.includes(nodeId);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 relative overflow-hidden">
