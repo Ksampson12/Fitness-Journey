@@ -116,10 +116,13 @@ export async function registerRoutes(
 
   app.post(api.user.updateOnboarding.path, async (req: any, res) => {
     try {
+      console.log("[Onboarding] Request received:", req.body);
       const input = api.user.updateOnboarding.input.parse(req.body);
       const userId = "test-user"; // Hardcoded for now
       
+      console.log("[Onboarding] Looking for profile for userId:", userId);
       let profile = await storage.getUserProfile(userId);
+      console.log("[Onboarding] Existing profile:", profile);
       
       const initialNodes = ["z1-n1"]; // Unlock first node
       
@@ -209,12 +212,15 @@ export async function registerRoutes(
       console.log("[Onboarding] Weekly plan created as reusable blueprint for journey progression");
 
       if (profile) {
+        console.log("[Onboarding] Updating existing profile");
         profile = await storage.updateUserProfile(userId, {
           ...input,
           weeklyPlan,
           unlockedNodeIds: profile.unlockedNodeIds.length ? profile.unlockedNodeIds : initialNodes
         });
+        console.log("[Onboarding] Profile updated:", profile);
       } else {
+        console.log("[Onboarding] Creating new profile");
         profile = await storage.createUserProfile({
           userId,
           ...input,
@@ -229,8 +235,10 @@ export async function registerRoutes(
           evolutionStage: 1,
           equippedItems: [],
         });
+        console.log("[Onboarding] Profile created:", profile);
       }
       
+      console.log("[Onboarding] Final profile to return:", profile);
       res.json(profile);
     } catch (err) {
       if (err instanceof z.ZodError) {
