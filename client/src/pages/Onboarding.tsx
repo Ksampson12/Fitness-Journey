@@ -53,22 +53,28 @@ export default function Onboarding() {
     }
   };
 
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       await updateOnboarding.mutateAsync({
         displayName: formData.displayName,
-        ageRange: formData.ageRange,
+        ageRange: formData.ageRange || undefined,
         fitnessLevel: formData.fitnessLevel as any,
-        trainingExperience: formData.trainingExperience,
+        trainingExperience: formData.trainingExperience || undefined,
         primaryGoal: formData.primaryGoal,
-        secondaryGoal: formData.secondaryGoal,
+        secondaryGoal: formData.secondaryGoal || undefined,
         targetAreas: formData.targetAreas,
         workoutDaysPerWeek: formData.workoutDaysPerWeek,
         preferredWorkoutLength: formData.preferredWorkoutLength,
         bestTimeOfDay: formData.bestTimeOfDay,
         workoutLocation: formData.workoutLocation,
         equipment: formData.equipment,
-        injuriesOrLimitations: formData.injuriesOrLimitations,
+        injuriesOrLimitations: formData.injuriesOrLimitations === "yes" ? formData.injuriesOrLimitations : undefined,
         movementsToAvoid: formData.movementsToAvoid,
         workoutStyle: formData.workoutStyle,
         intensityPreference: formData.intensityPreference,
@@ -684,18 +690,27 @@ export default function Onboarding() {
             />
           ))}
         </div>
-        <Button 
-          onClick={handleNext}
-          className="px-8"
-          disabled={
-            (currentStep === 0 && formData.displayName.length === 0) ||
-            (currentStep === 3 && formData.primaryGoal.length === 0) ||
-            (currentStep === 5 && formData.equipment.length === 0) ||
-            (updateOnboarding.isPending) // Disable when submitting
-          }
-        >
-          {updateOnboarding.isPending ? "Generating..." : currentStep === steps.length - 1 ? "Start Journey" : "Next"}
-        </Button>
+        <div className="flex gap-3">
+          {currentStep > 0 && (
+            <Button 
+              onClick={handlePrev}
+              variant="outline"
+              className="px-6 border-white/20 text-white hover:bg-white/10"
+            >
+              Back
+            </Button>
+          )}
+          <Button 
+            onClick={handleNext}
+            className="px-8"
+            disabled={
+              (currentStep === 0 && formData.displayName.length === 0) ||
+              (updateOnboarding.isPending) // Disable when submitting
+            }
+          >
+            {updateOnboarding.isPending ? "Generating..." : currentStep === steps.length - 1 ? "Start Journey" : "Next"}
+          </Button>
+        </div>
       </div>
     </div>
   );
