@@ -61,25 +61,31 @@ export default function Onboarding() {
 
   const handleSubmit = async () => {
     try {
-      await updateOnboarding.mutateAsync({
+      const submissionData: any = {
         displayName: formData.displayName,
-        ageRange: formData.ageRange || undefined,
-        fitnessLevel: formData.fitnessLevel as any,
-        trainingExperience: formData.trainingExperience || undefined,
-        primaryGoal: formData.primaryGoal,
-        secondaryGoal: formData.secondaryGoal || undefined,
-        targetAreas: formData.targetAreas,
-        workoutDaysPerWeek: formData.workoutDaysPerWeek,
-        preferredWorkoutLength: formData.preferredWorkoutLength,
-        bestTimeOfDay: formData.bestTimeOfDay,
-        workoutLocation: formData.workoutLocation,
-        equipment: formData.equipment,
-        injuriesOrLimitations: formData.injuriesOrLimitations === "yes" ? formData.injuriesOrLimitations : undefined,
-        movementsToAvoid: formData.movementsToAvoid,
-        workoutStyle: formData.workoutStyle,
-        intensityPreference: formData.intensityPreference,
+        fitnessLevel: formData.fitnessLevel,
         avatarArchetype: formData.avatarArchetype,
-      });
+      };
+
+      // Only add optional fields if they have values
+      if (formData.ageRange) submissionData.ageRange = formData.ageRange;
+      if (formData.trainingExperience) submissionData.trainingExperience = formData.trainingExperience;
+      if (formData.primaryGoal) submissionData.primaryGoal = formData.primaryGoal;
+      if (formData.secondaryGoal) submissionData.secondaryGoal = formData.secondaryGoal;
+      if (formData.targetAreas.length > 0) submissionData.targetAreas = formData.targetAreas;
+      if (formData.workoutDaysPerWeek) submissionData.workoutDaysPerWeek = formData.workoutDaysPerWeek;
+      if (formData.preferredWorkoutLength) submissionData.preferredWorkoutLength = formData.preferredWorkoutLength;
+      if (formData.bestTimeOfDay) submissionData.bestTimeOfDay = formData.bestTimeOfDay;
+      if (formData.workoutLocation) submissionData.workoutLocation = formData.workoutLocation;
+      if (formData.equipment.length > 0) submissionData.equipment = formData.equipment;
+      if (formData.injuriesOrLimitations === "yes" && formData.injuriesOrLimitations !== "no") {
+        submissionData.injuriesOrLimitations = formData.injuriesOrLimitations;
+      }
+      if (formData.movementsToAvoid.length > 0) submissionData.movementsToAvoid = formData.movementsToAvoid;
+      if (formData.workoutStyle) submissionData.workoutStyle = formData.workoutStyle;
+      if (formData.intensityPreference) submissionData.intensityPreference = formData.intensityPreference;
+
+      await updateOnboarding.mutateAsync(submissionData);
       // Redirect to the plan reveal page instead of home
       setLocation("/plan-reveal");
     } catch (error) {
