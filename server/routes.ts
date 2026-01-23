@@ -305,6 +305,11 @@ export async function registerRoutes(
       // Node 0 -> Day 0, Node 1 -> Day 1, ..., Node 7 -> Day 0 (cycling), etc.
       // This allows infinite map growth while maintaining personalized workouts
 
+      // When a new weekly plan is generated, wipe all uncompleted workouts
+      // This ensures "Accept Mission" creates fresh workouts from the new plan
+      await storage.deleteAllActiveWorkouts(userId);
+      console.log(`[Onboarding] Cleared all uncompleted workouts for user ${userId} (new weekly plan generated)`);
+
       if (profile) {
         profile = await storage.updateUserProfile(userId, {
           ...input,

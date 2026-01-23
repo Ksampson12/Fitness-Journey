@@ -27,6 +27,7 @@ export interface IStorage {
   createWorkout(workout: InsertWorkout): Promise<Workout>;
   completeWorkout(id: number, metrics: any): Promise<Workout>;
   deleteActiveWorkout(userId: string, nodeId: string): Promise<void>;
+  deleteAllActiveWorkouts(userId: string): Promise<void>;
   
   // AI Usage
   insertAiUsage(usage: any): Promise<void>;
@@ -119,6 +120,14 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(workouts.userId, userId),
         eq(workouts.nodeId, nodeId),
+        isNull(workouts.completedAt)
+      ));
+  }
+
+  async deleteAllActiveWorkouts(userId: string): Promise<void> {
+    await db.delete(workouts)
+      .where(and(
+        eq(workouts.userId, userId),
         isNull(workouts.completedAt)
       ));
   }
