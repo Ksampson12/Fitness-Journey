@@ -29,12 +29,15 @@ export default function Onboarding() {
     primaryGoal: "",
     secondaryGoal: "",
     targetAreas: [] as string[],
+    goals: [] as string[],
+    activities: [] as string[],
     workoutDaysPerWeek: 3,
     preferredWorkoutLength: "30-min",
     bestTimeOfDay: "morning",
     workoutLocation: "home",
     equipment: [] as string[],
-    injuriesOrLimitations: "no",
+    injuriesOrLimitations: "no" as "yes" | "no",
+    limitationsDescription: "",
     movementsToAvoid: [] as string[],
     workoutStyle: "mixed",
     intensityPreference: "moderate",
@@ -91,8 +94,8 @@ export default function Onboarding() {
       if (formData.bestTimeOfDay) submissionData.bestTimeOfDay = formData.bestTimeOfDay;
       if (formData.workoutLocation) submissionData.workoutLocation = formData.workoutLocation;
       if (formData.equipment.length > 0) submissionData.equipment = formData.equipment;
-      if (formData.injuriesOrLimitations === "yes" && formData.injuriesOrLimitations !== "no") {
-        submissionData.injuriesOrLimitations = formData.injuriesOrLimitations;
+      if (formData.injuriesOrLimitations === "yes") {
+        submissionData.injuriesOrLimitations = formData.limitationsDescription || "yes";
       }
       if (formData.movementsToAvoid.length > 0) submissionData.movementsToAvoid = formData.movementsToAvoid;
       if (formData.workoutStyle) submissionData.workoutStyle = formData.workoutStyle;
@@ -315,6 +318,7 @@ export default function Onboarding() {
           ))}
         </div>
       </div>
+    </div>
   );
 
   const renderGoals = () => (
@@ -530,7 +534,7 @@ export default function Onboarding() {
           ].map((option) => (
             <button
               key={option.value}
-              onClick={() => setFormData({ ...formData, injuriesOrLimitations: option.value })}
+              onClick={() => setFormData({ ...formData, injuriesOrLimitations: option.value as "yes" | "no" })}
               className={`w-full p-4 rounded-lg border text-left transition-all ${
                 formData.injuriesOrLimitations === option.value
                   ? "border-primary bg-primary/20 text-primary"
@@ -547,8 +551,8 @@ export default function Onboarding() {
         <div>
           <label className="block text-sm font-medium mb-2">Please describe your limitations</label>
           <textarea
-            value={formData.injuriesOrLimitations === "yes" ? formData.injuriesOrLimitations : ""}
-            onChange={(e) => setFormData({ ...formData, injuriesOrLimitations: e.target.value })}
+            value={formData.limitationsDescription}
+            onChange={(e) => setFormData({ ...formData, limitationsDescription: e.target.value })}
             placeholder="e.g., 'Knee pain when squatting', 'Lower back issues', 'Shoulder impingement'"
             className="w-full p-3 rounded-lg border border-white/10 bg-card text-sm min-h-[80px]"
           />
