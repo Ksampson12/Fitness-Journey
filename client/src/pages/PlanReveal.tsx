@@ -2,9 +2,10 @@ import { useUserProfile } from "@/hooks/use-user";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { CheckCircle2, Calendar, Quote, ArrowRight, Dumbbell, Target, Zap, Award } from "lucide-react";
+import { CheckCircle2, Calendar, Quote, ArrowRight, Dumbbell, Target, Zap, Award, ChevronDown } from "lucide-react";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 
 export default function PlanReveal() {
   const { isLoading: authLoading } = useAuth();
@@ -41,9 +42,40 @@ export default function PlanReveal() {
   }
 
   const plan = profile.weeklyPlan as any;
+  const [showScroll, setShowScroll] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const isBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
+      setShowScroll(!isBottom);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToBottom = () => {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth"
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-center max-w-lg mx-auto py-12">
+    <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-center max-w-lg mx-auto py-12 relative">
+      {showScroll && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, y: [0, 10, 0] }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 2, repeat: Infinity }}
+          onClick={scrollToBottom}
+          className="fixed bottom-8 right-8 z-50 bg-primary text-primary-foreground p-3 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:scale-110 transition-transform"
+        >
+          <ChevronDown className="w-6 h-6" />
+        </motion.button>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -136,7 +168,7 @@ export default function PlanReveal() {
           </div>
         </div>
 
-        <div className="pt-4 pb-8 sticky bottom-0 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="pt-8 pb-8 w-full">
           <Button 
             className="w-full h-14 text-lg font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:shadow-[0_0_40px_rgba(16,185,129,0.4)] transition-all" 
             size="lg"

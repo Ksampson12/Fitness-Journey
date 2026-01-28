@@ -27,7 +27,7 @@ export default function Onboarding() {
     ageRange: "",
     fitnessLevel: "beginner",
     trainingExperience: "",
-    primaryGoal: "",
+    primaryGoals: [] as string[],
     secondaryGoal: "",
     targetAreas: [] as string[],
     goals: [] as string[],
@@ -87,7 +87,7 @@ export default function Onboarding() {
       // Only add optional fields if they have values
       if (formData.ageRange) submissionData.ageRange = formData.ageRange;
       if (formData.trainingExperience) submissionData.trainingExperience = formData.trainingExperience;
-      if (formData.primaryGoal) submissionData.primaryGoal = formData.primaryGoal;
+      if (formData.primaryGoals.length > 0) submissionData.primaryGoal = formData.primaryGoals.join(", ");
       if (formData.secondaryGoal) submissionData.secondaryGoal = formData.secondaryGoal;
       if (formData.targetAreas.length > 0) submissionData.targetAreas = formData.targetAreas;
       if (formData.workoutDaysPerWeek) submissionData.workoutDaysPerWeek = formData.workoutDaysPerWeek;
@@ -325,7 +325,7 @@ export default function Onboarding() {
   const renderGoals = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium mb-2">Primary Goal</label>
+        <label className="block text-sm font-medium mb-2">Primary Goals (multi-select)</label>
         <div className="space-y-2">
           {[
             { value: "fat-loss", label: "Fat loss", icon: "🔥" },
@@ -337,9 +337,14 @@ export default function Onboarding() {
           ].map((goal) => (
             <button
               key={goal.value}
-              onClick={() => setFormData({ ...formData, primaryGoal: goal.value })}
+              onClick={() => {
+                const updated = formData.primaryGoals.includes(goal.value)
+                  ? formData.primaryGoals.filter(g => g !== goal.value)
+                  : [...formData.primaryGoals, goal.value];
+                setFormData({ ...formData, primaryGoals: updated });
+              }}
               className={`w-full p-4 rounded-lg border text-left transition-all ${
-                formData.primaryGoal === goal.value
+                formData.primaryGoals.includes(goal.value)
                   ? "border-primary bg-primary/20 text-primary"
                   : "border-white/10 bg-card hover:border-white/20"
               }`}
@@ -548,18 +553,6 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {formData.injuriesOrLimitations === "yes" && (
-        <div>
-          <label className="block text-sm font-medium mb-2">Please describe your limitations</label>
-          <textarea
-            value={formData.limitationsDescription}
-            onChange={(e) => setFormData({ ...formData, limitationsDescription: e.target.value })}
-            placeholder="e.g., 'Knee pain when squatting', 'Lower back issues', 'Shoulder impingement'"
-            className="w-full p-3 rounded-lg border border-white/10 bg-card text-sm min-h-[80px]"
-          />
-        </div>
-      )}
-
       <div>
         <label className="block text-sm font-medium mb-2">Movements to Avoid (optional)</label>
         <div className="grid grid-cols-2 gap-2">
@@ -645,19 +638,14 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen-safe bg-background p-6 flex flex-col justify-center max-w-lg mx-auto safe-area-all">
-      <div className="mb-8 mt-8">
-        <h1 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
-          Initialize
-        </h1>
-        <p className="text-muted-foreground">
-          Configure your fitness profile to begin the simulation.
-        </p>
-      </div>
-
-      <div className="flex-1">
-        <div className="mb-6">
-          <h2 className="text-xl font-display text-white mb-2">{steps[currentStep].title}</h2>
-          <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="mb-10 text-center space-y-3">
+          <h2 className="text-4xl md:text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary drop-shadow-sm">
+            {steps[currentStep].title}
+          </h2>
+          <p className="text-muted-foreground text-lg font-medium">
+            {steps[currentStep].description}
+          </p>
         </div>
 
         <motion.div
@@ -683,9 +671,9 @@ export default function Onboarding() {
         <div className="flex flex-col justify-center w-32 md:w-48">
           <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold">
             <span>Progress</span>
-            <span>{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+            <span>{Math.round((currentStep / (steps.length - 1)) * 100)}%</span>
           </div>
-          <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" />
+          <Progress value={(currentStep / (steps.length - 1)) * 100} className="h-1.5" />
         </div>
         <div className="flex gap-3">
           {currentStep > 0 && (
