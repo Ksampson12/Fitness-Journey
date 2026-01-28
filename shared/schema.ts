@@ -52,7 +52,6 @@ export const userProfiles = pgTable("user_profiles", {
   intensityPreference: text("intensity_preference"), // low-steady, moderate, push-hard
   
   weeklyPlan: jsonb("weekly_plan"), // Stores AI generated weekly schedule and motivation
-  nodeScheduleMap: jsonb("node_schedule_map"), // Maps nodeId -> scheduleIndex for explicit workout assignment
   
   // Physical Stats
   age: integer("age"),
@@ -98,23 +97,20 @@ export const workouts = pgTable("workouts", {
   userId: varchar("user_id").notNull(), // Links to auth.users.id
   nodeId: text("node_id").notNull(), // Which node this workout is for
   
-  // Workout data (migrate from existing columns)
-  plan: text("plan"), // JSON workout plan - will be populated from existing data
+  // Workout data
+  workoutJson: text("workout_json").notNull(), // JSON workout plan
+  source: text("source").notNull(), // Generation source: "weekly-plan", "quick-fit-ai"
+  scheduleIndex: integer("schedule_index"), // Position in weekly plan (0-6), null for quick-fit
   
   // Completion tracking
   completedAt: timestamp("completed_at"), // When completed
   completionMetrics: text("completion_metrics"), // JSON with duration, calories, etc
   
-  // AI tracking (with defaults to avoid data loss)
+  // AI tracking
   aiModel: text("ai_model").default("fallback"), // gpt-4, gpt-3.5-turbo, etc
   aiTokensUsed: integer("ai_tokens_used").default(0), // Total tokens used
   aiCost: integer("ai_cost").default(0), // Cost in cents (0.01 = 1 cent)
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  
-  // Keep old columns temporarily for migration
-  source: text("source"), // Keep for migration
-  workoutJson: text("workout_json"), // Keep for migration  
-  scheduleIndex: integer("schedule_index"), // Keep for migration
+  createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
 export const aiUsage = pgTable("ai_usage", {

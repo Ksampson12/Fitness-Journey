@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useUpdateOnboarding } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Dumbbell, Heart, Zap, User, Bike, Waves, Mountain, CircleDashed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -679,15 +680,12 @@ export default function Onboarding() {
       </div>
 
       <div className="mt-8 flex justify-between items-center pb-8">
-        <div className="flex gap-2">
-          {steps.map((_, idx) => (
-            <div
-              key={idx}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                idx === currentStep ? "bg-primary shadow-[0_0_5px_rgba(16,185,129,1)]" : "bg-white/10"
-              }`}
-            />
-          ))}
+        <div className="flex flex-col justify-center w-32 md:w-48">
+          <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold">
+            <span>Progress</span>
+            <span>{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
+          </div>
+          <Progress value={((currentStep + 1) / steps.length) * 100} className="h-1.5" />
         </div>
         <div className="flex gap-3">
           {currentStep > 0 && (
